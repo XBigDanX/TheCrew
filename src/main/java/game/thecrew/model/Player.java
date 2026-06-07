@@ -7,6 +7,7 @@ public class Player {
 
     private final String name;
     private final List<Card> hand;
+    private final List<Task> taskHand = new ArrayList<>();
 
     public Player(String name) {
         this.name = name;
@@ -21,12 +22,36 @@ public class Player {
         return hand;
     }
 
-    public void addCard(Card card) {
+    public void addCardToHand(Card card) {
         hand.add(card);
+        sortHand();
     }
 
-    public void removeCard(Card card) {
+    public void removeCardFromHand(Card card) {
         hand.remove(card);
+    }
+
+    public void addTask(Task task) {
+        taskHand.add(task);
+    }
+
+    public List<Task> getTaskHand() {
+        return taskHand;
+    }
+
+    public void sortHand() {
+        hand.sort((c1, c2) -> {
+
+            int colorCompare =
+                    Integer.compare(c1.getColor().ordinal(),
+                            c2.getColor().ordinal());
+
+            if (colorCompare != 0) {
+                return colorCompare;
+            }
+
+            return Integer.compare(c1.getValue(), c2.getValue());
+        });
     }
 
     @Override

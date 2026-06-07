@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
 
 <AnchorPane prefHeight="800.0" prefWidth="1200.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="game.thecrew.GameController">
 
@@ -8,53 +10,63 @@
   <!-- PLAYER HANDS -->
   <!-- ========================= -->
 
-  <HBox fx:id="hand0" layoutX="52.0" layoutY="608.0" prefHeight="128.0" prefWidth="500.0" spacing="10" style="-fx-background-color: black;" />
-
-  <HBox fx:id="hand1" layoutX="52.0" layoutY="50.0" prefHeight="143.0" prefWidth="500.0" spacing="10" style="-fx-background-color: black;" />
-
-  <HBox fx:id="hand2" layoutX="40" layoutY="320" spacing="10" />
-
-  <HBox fx:id="hand3" layoutX="850" layoutY="320" spacing="10" />
-
-  <HBox fx:id="hand4" layoutX="420" layoutY="140" spacing="10" />
-
   <!-- ========================= -->
-  <!-- CENTER TABLE -->
+  <!-- GAME INFO BAR -->
   <!-- ========================= -->
 
-  <Pane fx:id="centerPane" layoutX="350.0" layoutY="250.0" prefHeight="300" prefWidth="500" style="-fx-background-color: grey;">
+  <Pane fx:id="topBar" layoutX="-1.0" layoutY="10.0" prefHeight="50.0" prefWidth="1200.0" style="-fx-background-color: lightgray; -fx-border-color: black;">
 
-    <!-- ========================= -->
-    <!-- TRICK PLAY LAYER (MISSING BEFORE) -->
-    <!-- ========================= -->
+    <Label fx:id="currentPlayerLabel" layoutX="475.0" layoutY="17.0" text="Current Player: 0" />
 
-    <Pane fx:id="trickPane" layoutX="0" layoutY="0" managed="false" prefHeight="300" prefWidth="500">
-
-      <!-- TOP MIDDLE -->
-      <Pane fx:id="slot1" layoutX="50.0" layoutY="21.0" prefHeight="120" prefWidth="80" style="-fx-background-color: khaki;" />
-
-      <!-- TOP RIGHT -->
-      <Pane fx:id="slot2" layoutX="373.0" layoutY="21.0" prefHeight="120" prefWidth="80" style="-fx-background-color: khaki;" />
-
-      <!-- BOTTOM LEFT -->
-      <Pane fx:id="slot3" layoutX="373.0" layoutY="160.0" prefHeight="120" prefWidth="80" style="-fx-background-color: khaki;" />
-
-      <!-- BOTTOM RIGHT -->
-      <Pane fx:id="slot4" layoutX="216.0" layoutY="21.0" prefHeight="120" prefWidth="80" style="-fx-background-color: khaki;" />
-
-      <!-- TOP LEFT -->
-      <Pane fx:id="slot0" layoutX="50.0" layoutY="160.0" prefHeight="120" prefWidth="80" style="-fx-background-color: khaki;" />
-
-    </Pane>
-   
-    <!-- ========================= -->
-    <!-- TASK SELECTION LAYER -->
-    <!-- ========================= -->
-   
-    <HBox fx:id="taskPane" layoutX="58.0" layoutY="95.0" managed="true" prefHeight="110.0" prefWidth="384.0" spacing="10" style="-fx-background-color: rgba(0,0,0,0.3);" visible="true" />
+    <Button fx:id="passTaskSelectionButton" layoutX="652.0" layoutY="13.0" prefWidth="120.0" text="Pass Tasks" />
 
   </Pane>
-   <HBox fx:id="taskHand0" layoutX="52.0" layoutY="508.0" prefHeight="100.0" prefWidth="260.0" style="-fx-background-color: green;" />
-   <HBox fx:id="taskHand1" layoutX="52.0" layoutY="193.0" prefHeight="100.0" prefWidth="260.0" style="-fx-background-color: green;" />
+
+  <FlowPane fx:id="hand0" hgap="10" layoutX="52.0" layoutY="574.0" prefHeight="187.0" prefWidth="994.0" style="-fx-background-color: black;" vgap="10" />
+
+  <FlowPane fx:id="hand1" hgap="10" layoutX="52.0" layoutY="69.0" prefHeight="176.0" prefWidth="994.0" style="-fx-background-color: black;" vgap="10" />
+
+  <FlowPane fx:id="hand2" hgap="10" layoutX="825.0" layoutY="236.0" prefHeight="143.0" prefWidth="500.0" vgap="10" />
+
+  <FlowPane fx:id="hand3" hgap="10" layoutX="879.0" layoutY="379.0" prefHeight="143.0" prefWidth="500.0" vgap="10" />
+
+  <FlowPane fx:id="hand4" hgap="10" layoutX="796.0" layoutY="451.0" prefHeight="143.0" prefWidth="500.0" vgap="10" />
+
+  <!-- ========================= -->
+  <!-- TRICK PLAY LAYER -->
+  <!-- ========================= -->
+
+  <Pane fx:id="trickPane" layoutX="350.0" layoutY="250.0" managed="false" prefHeight="300" prefWidth="500" style="-fx-background-color: grey;">
+
+    <Pane fx:id="slot1" layoutX="50.0" layoutY="21.0" prefHeight="120" prefWidth="80" style="-fx-background-color: transparent; -fx-border-color: black; -fx-border-style: dashed; -fx-border-width: 2;" />
+
+    <Pane fx:id="slot2" layoutX="373.0" layoutY="21.0" prefHeight="120" prefWidth="80" style="-fx-background-color: transparent; -fx-border-color: black; -fx-border-style: dashed; -fx-border-width: 2;" />
+
+    <Pane fx:id="slot3" layoutX="373.0" layoutY="160.0" prefHeight="120" prefWidth="80" style="-fx-background-color: transparent; -fx-border-color: black; -fx-border-style: dashed; -fx-border-width: 2;" />
+
+    <Pane fx:id="slot4" layoutX="216.0" layoutY="21.0" prefHeight="120" prefWidth="80" style="-fx-background-color: transparent; -fx-border-color: black; -fx-border-style: dashed; -fx-border-width: 2;" />
+
+    <Pane fx:id="slot0" layoutX="50.0" layoutY="160.0" prefHeight="120" prefWidth="80" style="-fx-background-color: transparent; -fx-border-color: black; -fx-border-style: dashed; -fx-border-width: 2;" />
+
+  </Pane>
+
+  <!-- ========================= -->
+  <!-- TASK SELECTION LAYER -->
+  <!-- ========================= -->
+
+  <Pane fx:id="taskPane" layoutX="350.0" layoutY="250.0" prefHeight="300.0" prefWidth="500.0" style="-fx-background-color: grey;">
+
+    <Label layoutX="177.0" layoutY="28.0" text="Available Tasks">
+         <font>
+            <Font size="22.0" />
+         </font></Label>
+
+    <HBox fx:id="availableTasksBox" layoutX="45.0" layoutY="95.0" prefHeight="110.0" prefWidth="410.0" spacing="10" />
+
+  </Pane>
+
+  <HBox fx:id="taskHand0" layoutX="52.0" layoutY="474.0" prefHeight="100.0" prefWidth="260.0" style="-fx-background-color: green;" />
+
+  <HBox fx:id="taskHand1" layoutX="52.0" layoutY="236.0" prefHeight="100.0" prefWidth="260.0" style="-fx-background-color: green;" />
 
 </AnchorPane>

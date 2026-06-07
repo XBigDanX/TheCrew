@@ -2,7 +2,12 @@ package game.thecrew;
 
 import game.thecrew.model.*;
 import game.thecrew.ui.CardView;
+import game.thecrew.ui.PlayerUI;
+import game.thecrew.ui.TaskView;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 
@@ -10,134 +15,93 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GameController {
-    // =========================
-    // CENTER UI
-    // =========================
-    @FXML private Pane centerPane;
 
-    @FXML private HBox taskPane;
+    @FXML private Label currentPlayerLabel;
+    @FXML private Button passTaskSelectionButton;
+
+    @FXML private Pane taskPane;
+    @FXML private HBox availableTasksBox;
+
     @FXML private Pane trickPane;
+    @FXML private Pane slot0,slot1,slot2,slot3,slot4;
 
-    // =========================
-    // HANDS (UI)
-    // =========================
-    @FXML private HBox hand0;
-    @FXML private HBox hand1;
-    @FXML private HBox hand2;
-    @FXML private HBox hand3;
-    @FXML private HBox hand4;
+    @FXML private FlowPane hand0,hand1,hand2,hand3,hand4;
+    @FXML private HBox taskHand0,taskHand1,taskHand2,taskHand3,taskHand4;
 
-    private HBox[] hands;
+    private List<PlayerUI> playerUIs;
 
-    // =========================
-    // SLOTS (CENTER TRICKS)
-    // =========================
-    @FXML private Pane slot0;
-    @FXML private Pane slot1;
-    @FXML private Pane slot2;
-    @FXML private Pane slot3;
-    @FXML private Pane slot4;
+    private final CrewEngine engine = new CrewEngine();
 
-    private Pane[] slots;
-
-    @FXML private HBox taskHand0;
-    @FXML private HBox taskHand1;
-    @FXML private HBox taskHand2;
-    @FXML private HBox taskHand3;
-    @FXML private HBox taskHand4;
-
-    private HBox[] taskHands;
-
-    // =========================
-    // GAME DATA
-    // =========================
-    private final List<Player> players = new ArrayList<>();
-    private final int playerCount = 2; // change 2–5
-    private final List<Task> tasks = new ArrayList<>();
-
-    private GamePhase phase = GamePhase.TASK_SELECTION;
-
+    private final int playerCount = 2;
 
     // =========================
     // INIT
     // =========================
+
     @FXML
     public void initialize() {
 
-        hands = new HBox[]{hand0, hand1, hand2, hand3, hand4};
-        slots = new Pane[]{slot0, slot1, slot2, slot3, slot4};
-        taskHands = new HBox[]{taskHand0, taskHand1, taskHand2, taskHand3, taskHand4};
+        initPlayerUIs();
+
+        engine.createPlayers(playerCount);
+
+        setupMissions();
+
+        engine.dealCards();
+
         setupPlayerViews();
-        createPlayers();
-        addTestCards();
         renderAllHands();
 
-        showTaskPhase();
-        generateTasks();
+        renderTasks();
+        passTaskSelectionButton.setOnAction(e -> onPassClicked());
+        updateCurrentPlayerLabel();
+        updatePhasePanels();
+    }
 
+    // =========================
+    // MISSIONS
+    // =========================
+
+    private void setupMissions() {
+
+        List<Task> mission1Tasks = new ArrayList<>();
+        mission1Tasks.add(new Task("Task 1"));
+
+
+        List<Task> mission2Tasks = new ArrayList<>();
+        mission2Tasks.add(new Task("Task 3"));
+        mission2Tasks.add(new Task("Task 4"));
+
+        engine.addMission(new Mission("Mission 1", mission1Tasks));
+        engine.addMission(new Mission("Mission 2", mission2Tasks));
     }
 
     // =========================
     // UI SETUP
     // =========================
+
+    private void initPlayerUIs() {
+
+        playerUIs = List.of(
+                new PlayerUI(hand0, slot0, taskHand0),
+                new PlayerUI(hand1, slot1, taskHand1),
+                new PlayerUI(hand2, slot2, taskHand2),
+                new PlayerUI(hand3, slot3, taskHand3),
+                new PlayerUI(hand4, slot4, taskHand4)
+        );
+    }
+
     private void setupPlayerViews() {
 
-        for (int i = 0; i < hands.length; i++) {
-
-            boolean active = i < playerCount;
-
-            hands[i].setVisible(active);
-            hands[i].setManaged(active);
-
-            slots[i].setVisible(active);
-            slots[i].setManaged(active);
-
+        for (int i = 0; i < playerUIs.size(); i++) {
+            playerUIs.get(i).setVisible(i < playerCount);
         }
     }
 
     // =========================
-    // PLAYERS
+    // HANDS
     // =========================
-    private void createPlayers() {
 
-        players.clear();
-
-        for (int i = 0; i < playerCount; i++) {
-            players.add(new Player("Player " + (i + 1)));
-        }
-    }
-
-    private void addTestCards() {
-
-        if (playerCount >= 1) {
-            players.get(0).addCard(new Card(CardColor.BLUE, 5));
-            players.get(0).addCard(new Card(CardColor.GREEN, 2));
-        }
-
-        if (playerCount >= 2) {
-            players.get(1).addCard(new Card(CardColor.RED, 7));
-            players.get(1).addCard(new Card(CardColor.YELLOW, 9));
-        }
-
-        if (playerCount >= 3) {
-            players.get(2).addCard(new Card(CardColor.GREEN, 8));
-            players.get(2).addCard(new Card(CardColor.BLUE, 1));
-        }
-
-        if (playerCount >= 4) {
-            players.get(3).addCard(new Card(CardColor.YELLOW, 4));
-            players.get(3).addCard(new Card(CardColor.RED, 3));
-        }
-
-        if (playerCount >= 5) {
-            players.get(4).addCard(new Card(CardColor.SUBMARINE, 4));
-            players.get(4).addCard(new Card(CardColor.BLUE, 9));
-        }
-    }
-
-    // =========================
-    // RENDER HANDS
-    // =========================
     private void renderAllHands() {
 
         for (int i = 0; i < playerCount; i++) {
@@ -147,48 +111,105 @@ public class GameController {
 
     private void renderPlayerHand(int playerIndex) {
 
-        Player player = players.get(playerIndex);
-        HBox hand = hands[playerIndex];
+        Player player = engine.getPlayers().get(playerIndex);
 
-        hand.getChildren().clear();
+        FlowPane handPane = playerUIs.get(playerIndex).getHand();
+
+        handPane.getChildren().clear();
 
         for (Card card : player.getHand()) {
 
             CardView cardView = new CardView(card);
 
             cardView.setOnMouseClicked(e ->
-                    playCard(playerIndex, card)
+                    onCardClicked(playerIndex, card)
             );
 
-            hand.getChildren().add(cardView);
+            handPane.getChildren().add(cardView);
         }
     }
 
     // =========================
-    // GAME LOGIC
+    // CARDS
     // =========================
-    private void playCard(int playerIndex, Card card) {
 
-        Player player = players.get(playerIndex);
+    private void onCardClicked(int playerIndex, Card card) {
 
-        player.getHand().remove(card);
+        if (!engine.playCard(playerIndex, card)) {
+            return;
+        }
 
-        hands[playerIndex].getChildren().clear();
         renderPlayerHand(playerIndex);
 
-        slots[playerIndex].getChildren().clear();
-        slots[playerIndex].getChildren().add(new CardView(card));
+        Pane slot = playerUIs.get(playerIndex).getSlot();
+
+        slot.getChildren().clear();
+        slot.getChildren().add(new CardView(card));
+
+        updateCurrentPlayerLabel();
+        updatePhasePanels();
     }
 
     // =========================
-    // PHASE SYSTEM
+    // TASKS
     // =========================
-    private void showTaskPhase() {
 
-        phase = GamePhase.TASK_SELECTION;
+    private void renderTasks() {
+
+        availableTasksBox.getChildren().clear();
+
+        Mission mission = engine.getCurrentMission();
+
+        if (mission == null) {
+            return;
+        }
+
+        for (Task task : mission.getTasks()) {
+
+            TaskView taskView = new TaskView(task);
+
+            taskView.setOnMouseClicked(e ->
+                    onTaskClicked(playerIndexFromTurn(), task)
+            );
+
+            availableTasksBox.getChildren().add(taskView);
+        }
+    }
+
+    private void onTaskClicked(int playerIndex, Task task) {
+
+        if (!engine.selectTask(playerIndex, task)) {
+            return;
+        }
+
+        TaskView completedTask = new TaskView(task);
+        completedTask.setCompleted(true);
+
+        playerUIs.get(playerIndex)
+                .getTaskHand()
+                .getChildren()
+                .add(completedTask);
+
+        renderTasks();
+        updateCurrentPlayerLabel();
+
+        updatePhasePanels();
+    }
+
+    private int playerIndexFromTurn() {
+        return engine.getCurrentPlayerIndex();
+    }
+
+    // =========================
+    // PHASES
+    // =========================
+
+    private void showTaskPhase() {
 
         taskPane.setVisible(true);
         taskPane.setManaged(true);
+        passTaskSelectionButton.setVisible(true);
+        passTaskSelectionButton.setManaged(true);
 
         trickPane.setVisible(false);
         trickPane.setManaged(false);
@@ -196,75 +217,40 @@ public class GameController {
 
     private void showTrickPhase() {
 
-        phase = GamePhase.TRICKING;
-
         taskPane.setVisible(false);
         taskPane.setManaged(false);
+        passTaskSelectionButton.setVisible(false);
+        passTaskSelectionButton.setManaged(false);
 
         trickPane.setVisible(true);
         trickPane.setManaged(true);
     }
 
-    private void generateTasks() {
+    private void updatePhasePanels() {
 
-        tasks.clear();
-
-        tasks.add(new Task("Win Yellow 1"));
-        tasks.add(new Task("Win Blue 5"));
-
-        renderTasks();
-    }
-
-    private void renderTasks() {
-
-        taskPane.getChildren().clear();
-
-        for (Task task : tasks) {
-
-            Pane taskView = new Pane();
-
-            taskView.setPrefSize(80, 100);
-            taskView.setStyle("-fx-background-color: white;");
-
-            javafx.scene.text.Text text =
-                    new javafx.scene.text.Text(task.getDescription());
-
-            text.setLayoutX(10);
-            text.setLayoutY(50);
-
-            taskView.getChildren().add(text);
-
-            taskView.setOnMouseClicked(e ->
-                    selectTask(0, task)
-            );
-
-            taskPane.getChildren().add(taskView);
-        }
-    }
-
-    private void selectTask(int playerIndex, Task task) {
-
-        tasks.remove(task);
-
-        renderTasks();
-
-        Pane taskView = new Pane();
-
-        taskView.setPrefSize(80, 100);
-        taskView.setStyle("-fx-background-color: lightgreen;");
-
-        javafx.scene.text.Text text =
-                new javafx.scene.text.Text(task.getDescription());
-
-        text.setLayoutX(10);
-        text.setLayoutY(50);
-
-        taskView.getChildren().add(text);
-
-        taskHands[playerIndex].getChildren().add(taskView);
-
-        if (tasks.isEmpty()) {
+        if (engine.getPhase() == GamePhase.TASK_SELECTION) {
+            showTaskPhase();
+        } else {
             showTrickPhase();
         }
+    }
+
+    private void updateCurrentPlayerLabel() {
+        currentPlayerLabel.setText(
+                "Current Turn: Player " + (engine.getCurrentPlayerIndex()+1)
+        );
+    }
+
+
+    private void onPassClicked() {
+
+        int playerIndex = engine.getCurrentPlayerIndex();
+
+        if (!engine.passTaskSelection(playerIndex)) {
+            return;
+        }
+
+        renderTasks();
+        updateCurrentPlayerLabel();
     }
 }
