@@ -15,6 +15,9 @@ public class CrewEngine {
     private int currentMissionIndex = 0;
 
     private int currentPlayerIndex = 0;
+    private int captainIndex = 0;
+
+    private int turnsRemainingInCycle = 0;
 
     private GamePhase phase = GamePhase.TASK_SELECTION;
 
@@ -41,8 +44,7 @@ public class CrewEngine {
             currentMissionIndex++;
         }
 
-        currentPlayerIndex = 0;
-        phase = GamePhase.TASK_SELECTION;
+        startTaskSelectionPhase();
     }
 
     public int getCurrentMissionIndex() {
@@ -67,18 +69,6 @@ public class CrewEngine {
     }
 
     // =========================
-    // TURN SYSTEM
-    // =========================
-
-    public int getCurrentPlayerIndex() {
-        return currentPlayerIndex;
-    }
-
-    public void nextTurn() {
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
-    }
-
-    // =========================
     // PHASE
     // =========================
 
@@ -87,7 +77,19 @@ public class CrewEngine {
     }
 
     // =========================
-    // TASK LOGIC
+    // TURN SYSTEM
+    // =========================
+
+    public int getCurrentPlayerIndex() {
+        return currentPlayerIndex;
+    }
+
+    private void nextPlayer() {
+        currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
+    }
+
+    // =========================
+    // TASK SELECTION
     // =========================
 
     public boolean selectTask(int playerIndex, Task task) {
@@ -111,24 +113,91 @@ public class CrewEngine {
         mission.getTasks().remove(task);
         player.addTask(task);
 
-        nextTurn();
+        turnsRemainingInCycle--;
 
         if (mission.getTasks().isEmpty()) {
-            phase = GamePhase.TRICKING;
-            currentPlayerIndex = 0;
+            startTrickPhase();
+            return true;
         }
+
+        advanceTaskSelectionTurn();
 
         return true;
     }
 
-    private int calculateRemainingTasks() {
+    public boolean passTaskSelection(int playerIndex) {
+
+        if (phase != GamePhase.TASK_SELECTION) {
+            return false;
+        }
+
+        if (playerIndex != currentPlayerIndex) {
+            return false;
+        }
+
+        if (!canPassTaskSelection()) {
+            return false;
+        }
+
+        turnsRemainingInCycle--;
+
+        advanceTaskSelectionTurn();
+
+        return true;
+    }
+
+    private boolean canPassTaskSelection() {
+
         Mission mission = getCurrentMission();
-        if (mission == null) return 0;
-        return mission.getTasks().size();
+
+        if (mission == null) {
+            return false;
+        }
+
+        int remainingTasks = mission.getTasks().size();
+
+        int remainingPlayersAfterPass = turnsRemainingInCycle - 1;
+
+        return remainingTasks <= remainingPlayersAfterPass;
+    }
+
+
+    private void advanceTaskSelectionTurn() {
+
+        Mission mission = getCurrentMission();
+
+        if (mission == null) {
+            return;
+        }
+
+        if (mission.getTasks().isEmpty()) {
+            startTrickPhase();
+            return;
+        }
+
+        if (turnsRemainingInCycle == 0) {
+
+            turnsRemainingInCycle = players.size();
+            currentPlayerIndex = captainIndex;
+
+            return;
+        }
+
+        nextPlayer();
     }
 
     // =========================
-    // CARD LOGIC
+    // TRICK PHASE
+    // =========================
+
+    private void startTrickPhase() {
+
+        phase = GamePhase.TRICKING;
+        currentPlayerIndex = captainIndex;
+    }
+
+    // =========================
+    // CARD PLAY
     // =========================
 
     public boolean playCard(int playerIndex, Card card) {
@@ -145,44 +214,18 @@ public class CrewEngine {
 
         player.removeCardFromHand(card);
 
-        nextTurn();
+        nextPlayer();
 
         return true;
     }
 
-    private boolean canPassTaskSelection() {
-
-        if (phase != GamePhase.TASK_SELECTION) return false;
-
-        int remainingTasks = calculateRemainingTasks();
-        int remainingPlayers = players.size() - currentPlayerIndex;
-
-        return remainingTasks < remainingPlayers;
-    }
-
-    public boolean passTaskSelection(int playerIndex) {
-
-        if (phase != GamePhase.TASK_SELECTION) {
-            return false;
-        }
-
-        if (playerIndex != currentPlayerIndex) {
-            return false;
-        }
-
-        if (!canPassTaskSelection()) return false;
-
-        nextTurn();
-
-        return true;
-    }
+    // =========================
+    // DECK
+    // =========================
 
     private List<Card> createDeck() {
 
         List<Card> deck = new ArrayList<>();
-
-        // Standard Crew-style deck:
-        // Colors + values 1–9 + submarine trump cards
 
         CardColor[] colors = {
                 CardColor.BLUE,
@@ -197,7 +240,6 @@ public class CrewEngine {
             }
         }
 
-        // Add submarines (trump cards)
         for (int i = 1; i <= 4; i++) {
             deck.add(new Card(CardColor.SUBMARINE, i));
         }
@@ -208,6 +250,7 @@ public class CrewEngine {
     public void dealCards() {
 
         List<Card> deck = createDeck();
+
         Collections.shuffle(deck, new Random());
 
         int playerIndex = 0;
@@ -220,5 +263,50 @@ public class CrewEngine {
 
             playerIndex = (playerIndex + 1) % players.size();
         }
+    }
+
+    // =========================
+    // GAME START
+    // =========================
+
+    public void startGame() {
+
+        determineCaptain();
+        startTaskSelectionPhase();
+    }
+
+    private void startTaskSelectionPhase() {
+
+        phase = GamePhase.TASK_SELECTION;
+
+        currentPlayerIndex = captainIndex;
+
+        turnsRemainingInCycle = players.size();
+    }
+
+    // =========================
+    // CAPTAIN
+    // =========================
+
+    private void determineCaptain() {
+
+        for (int i = 0; i < players.size(); i++) {
+
+            for (Card card : players.get(i).getHand()) {
+
+                if (card.getColor() == CardColor.SUBMARINE
+                        && card.getValue() == 4) {
+
+                    captainIndex = i;
+                    return;
+                }
+            }
+        }
+
+        captainIndex = 0;
+    }
+
+    public int getCaptainIndex() {
+        return captainIndex;
     }
 }

@@ -49,11 +49,15 @@ public class GameController {
 
         engine.dealCards();
 
+        engine.startGame(); // IMPORTANT
+
         setupPlayerViews();
         renderAllHands();
 
         renderTasks();
+
         passTaskSelectionButton.setOnAction(e -> onPassClicked());
+
         updateCurrentPlayerLabel();
         updatePhasePanels();
     }
@@ -66,6 +70,9 @@ public class GameController {
 
         List<Task> mission1Tasks = new ArrayList<>();
         mission1Tasks.add(new Task("Task 1"));
+        mission1Tasks.add(new Task("Task 2"));
+        mission1Tasks.add(new Task("Task 3"));
+
 
 
         List<Task> mission2Tasks = new ArrayList<>();
