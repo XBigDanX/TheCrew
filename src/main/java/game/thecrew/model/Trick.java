@@ -23,7 +23,7 @@ public class Trick {
     }
 
     public int resolveWinner() {
-        // simple rule first (no trump logic yet):
+        // simple rule first:
         // highest value wins
         int bestIndex = 0;
 
