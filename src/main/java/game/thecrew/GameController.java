@@ -32,7 +32,7 @@ public class GameController {
 
     private final CrewEngine engine = new CrewEngine();
 
-    private final int playerCount = 2;
+    private final int playerCount = 4;
 
     // =========================
     // INIT
@@ -40,20 +40,14 @@ public class GameController {
 
     @FXML
     public void initialize() {
-
         initPlayerUIs();
-
         engine.createPlayers(playerCount);
-
         setupMissions();
-
         engine.dealCards();
-
         engine.startGame(); // IMPORTANT
 
         setupPlayerViews();
         renderAllHands();
-
         renderTasks();
 
         passTaskSelectionButton.setOnAction(e -> onPassClicked());
@@ -63,32 +57,10 @@ public class GameController {
     }
 
     // =========================
-    // MISSIONS
-    // =========================
-
-    private void setupMissions() {
-
-        List<Task> mission1Tasks = new ArrayList<>();
-        mission1Tasks.add(new Task("Task 1"));
-        mission1Tasks.add(new Task("Task 2"));
-        mission1Tasks.add(new Task("Task 3"));
-
-
-
-        List<Task> mission2Tasks = new ArrayList<>();
-        mission2Tasks.add(new Task("Task 3"));
-        mission2Tasks.add(new Task("Task 4"));
-
-        engine.addMission(new Mission("Mission 1", mission1Tasks));
-        engine.addMission(new Mission("Mission 2", mission2Tasks));
-    }
-
-    // =========================
-    // UI SETUP
+    // SETUP HELPERS
     // =========================
 
     private void initPlayerUIs() {
-
         playerUIs = List.of(
                 new PlayerUI(hand0, slot0, taskHand0),
                 new PlayerUI(hand1, slot1, taskHand1),
@@ -98,73 +70,50 @@ public class GameController {
         );
     }
 
-    private void setupPlayerViews() {
+    private void setupMissions() {
+        List<Task> mission1Tasks = new ArrayList<>();
+        mission1Tasks.add(new Task("Task 1"));
 
+        List<Task> mission2Tasks = new ArrayList<>();
+        mission2Tasks.add(new Task("Task 3"));
+        mission2Tasks.add(new Task("Task 4"));
+
+        engine.addMission(new Mission("Mission 1", mission1Tasks));
+        engine.addMission(new Mission("Mission 2", mission2Tasks));
+    }
+
+    private void setupPlayerViews() {
         for (int i = 0; i < playerUIs.size(); i++) {
             playerUIs.get(i).setVisible(i < playerCount);
         }
     }
 
     // =========================
-    // HANDS
+    // RENDERING
     // =========================
 
     private void renderAllHands() {
-
         for (int i = 0; i < playerCount; i++) {
             renderPlayerHand(i);
         }
     }
 
     private void renderPlayerHand(int playerIndex) {
-
         Player player = engine.getPlayers().get(playerIndex);
-
         FlowPane handPane = playerUIs.get(playerIndex).getHand();
-
         handPane.getChildren().clear();
 
         for (Card card : player.getHand()) {
-
             CardView cardView = new CardView(card);
-
             cardView.setOnMouseClicked(e ->
                     onCardClicked(playerIndex, card)
             );
-
             handPane.getChildren().add(cardView);
         }
     }
 
-    // =========================
-    // CARDS
-    // =========================
-
-    private void onCardClicked(int playerIndex, Card card) {
-
-        if (!engine.playCard(playerIndex, card)) {
-            return;
-        }
-
-        renderPlayerHand(playerIndex);
-
-        Pane slot = playerUIs.get(playerIndex).getSlot();
-
-        slot.getChildren().clear();
-        slot.getChildren().add(new CardView(card));
-
-        updateCurrentPlayerLabel();
-        updatePhasePanels();
-    }
-
-    // =========================
-    // TASKS
-    // =========================
-
     private void renderTasks() {
-
         availableTasksBox.getChildren().clear();
-
         Mission mission = engine.getCurrentMission();
 
         if (mission == null) {
@@ -172,19 +121,28 @@ public class GameController {
         }
 
         for (Task task : mission.getTasks()) {
-
             TaskView taskView = new TaskView(task);
-
             taskView.setOnMouseClicked(e ->
                     onTaskClicked(playerIndexFromTurn(), task)
             );
-
             availableTasksBox.getChildren().add(taskView);
         }
     }
 
-    private void onTaskClicked(int playerIndex, Task task) {
+    // =========================
+    // EVENT HANDLERS
+    // =========================
 
+    private void onPassClicked() {
+        int playerIndex = engine.getCurrentPlayerIndex();
+        if (!engine.passTaskSelection(playerIndex)) {
+            return;
+        }
+        renderTasks();
+        updateCurrentPlayerLabel();
+    }
+
+    private void onTaskClicked(int playerIndex, Task task) {
         if (!engine.selectTask(playerIndex, task)) {
             return;
         }
@@ -199,20 +157,43 @@ public class GameController {
 
         renderTasks();
         updateCurrentPlayerLabel();
-
         updatePhasePanels();
     }
 
-    private int playerIndexFromTurn() {
-        return engine.getCurrentPlayerIndex();
+    private void onCardClicked(int playerIndex, Card card) {
+        if (!engine.playCard(playerIndex, card)) {
+            return;
+        }
+
+        renderPlayerHand(playerIndex);
+
+        Pane slot = playerUIs.get(playerIndex).getSlot();
+        slot.getChildren().clear();
+        slot.getChildren().add(new CardView(card));
+
+        updateCurrentPlayerLabel();
+        updatePhasePanels();
     }
 
     // =========================
-    // PHASES
+    // UI UPDATES & HELPERS
     // =========================
 
-    private void showTaskPhase() {
+    private void updateCurrentPlayerLabel() {
+        currentPlayerLabel.setText(
+                "Current Turn: Player " + (engine.getCurrentPlayerIndex()+1)
+        );
+    }
 
+    private void updatePhasePanels() {
+        if (engine.getPhase() == GamePhase.TASK_SELECTION) {
+            showTaskPhase();
+        } else {
+            showTrickPhase();
+        }
+    }
+
+    private void showTaskPhase() {
         taskPane.setVisible(true);
         taskPane.setManaged(true);
         passTaskSelectionButton.setVisible(true);
@@ -223,7 +204,6 @@ public class GameController {
     }
 
     private void showTrickPhase() {
-
         taskPane.setVisible(false);
         taskPane.setManaged(false);
         passTaskSelectionButton.setVisible(false);
@@ -233,31 +213,7 @@ public class GameController {
         trickPane.setManaged(true);
     }
 
-    private void updatePhasePanels() {
-
-        if (engine.getPhase() == GamePhase.TASK_SELECTION) {
-            showTaskPhase();
-        } else {
-            showTrickPhase();
-        }
-    }
-
-    private void updateCurrentPlayerLabel() {
-        currentPlayerLabel.setText(
-                "Current Turn: Player " + (engine.getCurrentPlayerIndex()+1)
-        );
-    }
-
-
-    private void onPassClicked() {
-
-        int playerIndex = engine.getCurrentPlayerIndex();
-
-        if (!engine.passTaskSelection(playerIndex)) {
-            return;
-        }
-
-        renderTasks();
-        updateCurrentPlayerLabel();
+    private int playerIndexFromTurn() {
+        return engine.getCurrentPlayerIndex();
     }
 }

@@ -17,75 +17,47 @@ public class CrewEngine {
     private int currentPlayerIndex = 0;
     private int captainIndex = 0;
 
-    private int turnsRemainingInCycle = 0;
-
     private GamePhase phase = GamePhase.TASK_SELECTION;
+    
+    private final CardManager cardManager = new CardManager();
+    private TaskSelectionManager taskManager;
+    private final TrickManager trickManager = new TrickManager();
 
     // =========================
-    // MISSIONS
-    // =========================
-
-    public void addMission(Mission mission) {
-        missions.add(mission);
-    }
-
-    public Mission getCurrentMission() {
-
-        if (missions.isEmpty()) {
-            return null;
-        }
-
-        return missions.get(currentMissionIndex);
-    }
-
-    public void nextMission() {
-
-        if (currentMissionIndex < missions.size() - 1) {
-            currentMissionIndex++;
-        }
-
-        startTaskSelectionPhase();
-    }
-
-    public int getCurrentMissionIndex() {
-        return currentMissionIndex;
-    }
-
-    // =========================
-    // PLAYERS
+    // SETUP
     // =========================
 
     public void createPlayers(int playerCount) {
-
         players.clear();
-
         for (int i = 0; i < playerCount; i++) {
             players.add(new Player("Player " + (i + 1)));
         }
     }
 
-    public List<Player> getPlayers() {
-        return players;
+    public void addMission(Mission mission) {
+        missions.add(mission);
     }
 
     // =========================
-    // PHASE
+    // GAME LIFECYCLE
     // =========================
 
-    public GamePhase getPhase() {
-        return phase;
+    public void startGame() {
+        captainIndex = cardManager.determineCaptain(players);
+        startTaskSelectionPhase();
     }
 
-    // =========================
-    // TURN SYSTEM
-    // =========================
-
-    public int getCurrentPlayerIndex() {
-        return currentPlayerIndex;
+    public void dealCards() {
+        cardManager.dealCards(players);
     }
 
-    private void nextPlayer() {
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
+    private void startTaskSelectionPhase() {
+        phase = GamePhase.TASK_SELECTION;
+        currentPlayerIndex = captainIndex;
+        this.taskManager = new TaskSelectionManager(
+                players,
+                getCurrentMission().getTasks()
+        );
     }
 
     // =========================
@@ -93,8 +65,7 @@ public class CrewEngine {
     // =========================
 
     public boolean selectTask(int playerIndex, Task task) {
-
-        if (phase != GamePhase.TASK_SELECTION) {
+        if (phase != GamePhase.TASK_SELECTION || taskManager == null) {
             return false;
         }
 
@@ -102,88 +73,30 @@ public class CrewEngine {
             return false;
         }
 
-        Mission mission = getCurrentMission();
+        taskManager.selectTask(playerIndex, task);
 
-        if (mission == null) {
-            return false;
-        }
-
-        Player player = players.get(playerIndex);
-
-        mission.getTasks().remove(task);
-        player.addTask(task);
-
-        turnsRemainingInCycle--;
-
-        if (mission.getTasks().isEmpty()) {
+        if (taskManager.isSelectionFinished()) {
             startTrickPhase();
-            return true;
+        } else {
+            nextPlayer();
         }
-
-        advanceTaskSelectionTurn();
 
         return true;
     }
 
     public boolean passTaskSelection(int playerIndex) {
-
-        if (phase != GamePhase.TASK_SELECTION) {
+        if (phase != GamePhase.TASK_SELECTION || taskManager == null) {
             return false;
         }
 
-        if (playerIndex != currentPlayerIndex) {
+        if (!taskManager.canSkip(playerIndex, currentPlayerIndex)) {
             return false;
         }
 
-        if (!canPassTaskSelection()) {
-            return false;
-        }
-
-        turnsRemainingInCycle--;
-
-        advanceTaskSelectionTurn();
+        taskManager.pass();
+        nextPlayer();
 
         return true;
-    }
-
-    private boolean canPassTaskSelection() {
-
-        Mission mission = getCurrentMission();
-
-        if (mission == null) {
-            return false;
-        }
-
-        int remainingTasks = mission.getTasks().size();
-
-        int remainingPlayersAfterPass = turnsRemainingInCycle - 1;
-
-        return remainingTasks <= remainingPlayersAfterPass;
-    }
-
-
-    private void advanceTaskSelectionTurn() {
-
-        Mission mission = getCurrentMission();
-
-        if (mission == null) {
-            return;
-        }
-
-        if (mission.getTasks().isEmpty()) {
-            startTrickPhase();
-            return;
-        }
-
-        if (turnsRemainingInCycle == 0) {
-
-            turnsRemainingInCycle = players.size();
-            currentPlayerIndex = captainIndex;
-
-            return;
-        }
-
-        nextPlayer();
     }
 
     // =========================
@@ -191,17 +104,12 @@ public class CrewEngine {
     // =========================
 
     private void startTrickPhase() {
-
         phase = GamePhase.TRICKING;
         currentPlayerIndex = captainIndex;
+        trickManager.clearTrick();
     }
 
-    // =========================
-    // CARD PLAY
-    // =========================
-
     public boolean playCard(int playerIndex, Card card) {
-
         if (phase != GamePhase.TRICKING) {
             return false;
         }
@@ -212,101 +120,49 @@ public class CrewEngine {
 
         Player player = players.get(playerIndex);
 
-        player.removeCardFromHand(card);
+        if (trickManager.playCard(playerIndex, card, trickManager.getLeadSuit(), player.getHand())) {
+            player.removeCardFromHand(card);
 
-        nextPlayer();
-
-        return true;
-    }
-
-    // =========================
-    // DECK
-    // =========================
-
-    private List<Card> createDeck() {
-
-        List<Card> deck = new ArrayList<>();
-
-        CardColor[] colors = {
-                CardColor.BLUE,
-                CardColor.RED,
-                CardColor.YELLOW,
-                CardColor.GREEN
-        };
-
-        for (CardColor color : colors) {
-            for (int value = 1; value <= 9; value++) {
-                deck.add(new Card(color, value));
+            if (trickManager.isTrickComplete(players.size())) {
+                currentPlayerIndex = trickManager.determineWinner(trickManager.getLeadSuit());
+                trickManager.clearTrick();
+            } else {
+                nextPlayer();
             }
+            return true;
         }
 
-        for (int i = 1; i <= 4; i++) {
-            deck.add(new Card(CardColor.SUBMARINE, i));
-        }
-
-        return deck;
-    }
-
-    public void dealCards() {
-
-        List<Card> deck = createDeck();
-
-        Collections.shuffle(deck, new Random());
-
-        int playerIndex = 0;
-
-        while (!deck.isEmpty()) {
-
-            Card card = deck.remove(deck.size() - 1);
-
-            players.get(playerIndex).addCardToHand(card);
-
-            playerIndex = (playerIndex + 1) % players.size();
-        }
+        return false;
     }
 
     // =========================
-    // GAME START
+    // STATE ACCESSORS & HELPERS
     // =========================
 
-    public void startGame() {
-
-        determineCaptain();
-        startTaskSelectionPhase();
+    private void nextPlayer() {
+        currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
     }
 
-    private void startTaskSelectionPhase() {
-
-        phase = GamePhase.TASK_SELECTION;
-
-        currentPlayerIndex = captainIndex;
-
-        turnsRemainingInCycle = players.size();
-    }
-
-    // =========================
-    // CAPTAIN
-    // =========================
-
-    private void determineCaptain() {
-
-        for (int i = 0; i < players.size(); i++) {
-
-            for (Card card : players.get(i).getHand()) {
-
-                if (card.getColor() == CardColor.SUBMARINE
-                        && card.getValue() == 4) {
-
-                    captainIndex = i;
-                    return;
-                }
-            }
-        }
-
-        captainIndex = 0;
+    public int getCurrentPlayerIndex() {
+        return currentPlayerIndex;
     }
 
     public int getCaptainIndex() {
         return captainIndex;
+    }
+
+    public GamePhase getPhase() {
+        return phase;
+    }
+
+    public Mission getCurrentMission() {
+        if (missions.isEmpty()) {
+            return null;
+        }
+        return missions.get(currentMissionIndex);
+    }
+
+    public List<Player> getPlayers() {
+        return players;
     }
 }
