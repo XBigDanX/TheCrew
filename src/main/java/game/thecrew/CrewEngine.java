@@ -110,6 +110,7 @@ public class CrewEngine {
     }
 
     public boolean playCard(int playerIndex, Card card) {
+
         if (phase != GamePhase.TRICKING) {
             return false;
         }
@@ -120,19 +121,31 @@ public class CrewEngine {
 
         Player player = players.get(playerIndex);
 
-        if (trickManager.playCard(playerIndex, card, trickManager.getLeadSuit(), player.getHand())) {
-            player.removeCardFromHand(card);
-
-            if (trickManager.isTrickComplete(players.size())) {
-                currentPlayerIndex = trickManager.determineWinner(trickManager.getLeadSuit());
-                trickManager.clearTrick();
-            } else {
-                nextPlayer();
-            }
-            return true;
+        // validate ownership
+        if (!player.getHand().contains(card)) {
+            return false;
         }
 
-        return false;
+        // remove card FIRST (engine owns state)
+        player.removeCardFromHand(card);
+
+        // record trick
+        trickManager.playCard(playerIndex, card);
+
+        // end of trick?
+        if (trickManager.isTrickComplete(players.size())) {
+
+            int winner = trickManager.determineWinner();
+
+            currentPlayerIndex = winner;
+
+            trickManager.clearTrick();
+
+        } else {
+            nextPlayer();
+        }
+
+        return true;
     }
 
     // =========================

@@ -1,44 +1,26 @@
-package game.thecrew;
-
-import game.thecrew.model.Card;
-import game.thecrew.model.CardColor;
-import game.thecrew.model.TrickPlay;
+package game.thecrew.model;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class TrickManager {
+public class Trick {
 
     private final List<TrickPlay> plays = new ArrayList<>();
-    private CardColor leadSuit = null;
 
-    // =========================
-    // PLAY CARD (ONLY RECORD)
-    // =========================
-    public void playCard(int playerIndex, Card card) {
-
-        if (plays.isEmpty()) {
-            leadSuit = card.getColor();
-        }
-
-        plays.add(new TrickPlay(playerIndex, card));
+    public void addPlay(TrickPlay play) {
+        plays.add(play);
     }
 
-    // =========================
-    // TRICK STATE
-    // =========================
-    public boolean isTrickComplete(int playerCount) {
-        return plays.size() == playerCount;
+    public List<TrickPlay> getPlays() {
+        return plays;
     }
 
     public CardColor getLeadSuit() {
-        return leadSuit;
+        if (plays.isEmpty()) return null;
+        return plays.get(0).getCard().getColor();
     }
 
-    // =========================
-    // WINNER LOGIC
-    // =========================
-    public int determineWinner() {
+    public int getWinnerIndex(CardColor leadSuit) {
 
         int winnerIndex = -1;
         Card winningCard = null;
@@ -54,11 +36,14 @@ public class TrickManager {
             }
 
             if (card.isTrump()) {
+
                 if (!winningCard.isTrump() || card.getValue() > winningCard.getValue()) {
                     winnerIndex = play.getPlayerIndex();
                     winningCard = card;
                 }
+
             } else if (!winningCard.isTrump() && card.getColor() == leadSuit) {
+
                 if (winningCard.getColor() != leadSuit || card.getValue() > winningCard.getValue()) {
                     winnerIndex = play.getPlayerIndex();
                     winningCard = card;
@@ -67,13 +52,5 @@ public class TrickManager {
         }
 
         return winnerIndex;
-    }
-
-    // =========================
-    // RESET
-    // =========================
-    public void clearTrick() {
-        plays.clear();
-        leadSuit = null;
     }
 }
