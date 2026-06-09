@@ -1,79 +1,40 @@
 package game.thecrew;
 
-import game.thecrew.model.Card;
-import game.thecrew.model.CardColor;
-import game.thecrew.model.TrickPlay;
-
-import java.util.ArrayList;
-import java.util.List;
+import game.thecrew.model.*;
 
 public class TrickManager {
 
-    private final List<TrickPlay> plays = new ArrayList<>();
-    private CardColor leadSuit = null;
+    private Trick currentTrick = new Trick();
 
     // =========================
-    // PLAY CARD (ONLY RECORD)
+    // PLAY CARD
     // =========================
     public void playCard(int playerIndex, Card card) {
-
-        if (plays.isEmpty()) {
-            leadSuit = card.getColor();
-        }
-
-        plays.add(new TrickPlay(playerIndex, card));
+        currentTrick.addPlay(new TrickPlay(playerIndex, card));
     }
 
     // =========================
-    // TRICK STATE
+    // STATE
     // =========================
     public boolean isTrickComplete(int playerCount) {
-        return plays.size() == playerCount;
+        return currentTrick.getPlays().size() == playerCount;
     }
 
     public CardColor getLeadSuit() {
-        return leadSuit;
+        return currentTrick.getLeadSuit();
     }
 
     // =========================
-    // WINNER LOGIC
+    // WINNER
     // =========================
     public int determineWinner() {
-
-        int winnerIndex = -1;
-        Card winningCard = null;
-
-        for (TrickPlay play : plays) {
-
-            Card card = play.getCard();
-
-            if (winningCard == null) {
-                winnerIndex = play.getPlayerIndex();
-                winningCard = card;
-                continue;
-            }
-
-            if (card.isTrump()) {
-                if (!winningCard.isTrump() || card.getValue() > winningCard.getValue()) {
-                    winnerIndex = play.getPlayerIndex();
-                    winningCard = card;
-                }
-            } else if (!winningCard.isTrump() && card.getColor() == leadSuit) {
-                if (winningCard.getColor() != leadSuit || card.getValue() > winningCard.getValue()) {
-                    winnerIndex = play.getPlayerIndex();
-                    winningCard = card;
-                }
-            }
-        }
-
-        return winnerIndex;
+        return currentTrick.getWinnerIndex(getLeadSuit());
     }
 
     // =========================
     // RESET
     // =========================
     public void clearTrick() {
-        plays.clear();
-        leadSuit = null;
+        currentTrick = new Trick();
     }
 }

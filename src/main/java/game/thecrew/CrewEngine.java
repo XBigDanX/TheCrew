@@ -121,18 +121,14 @@ public class CrewEngine {
 
         Player player = players.get(playerIndex);
 
-        // validate ownership
         if (!player.getHand().contains(card)) {
             return false;
         }
 
-        // remove card FIRST (engine owns state)
         player.removeCardFromHand(card);
 
-        // record trick
         trickManager.playCard(playerIndex, card);
 
-        // end of trick?
         if (trickManager.isTrickComplete(players.size())) {
 
             int winner = trickManager.determineWinner();
