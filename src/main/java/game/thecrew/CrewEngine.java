@@ -104,9 +104,10 @@ public class CrewEngine {
     // =========================
 
     private void startTrickPhase() {
+
         phase = GamePhase.TRICKING;
         currentPlayerIndex = captainIndex;
-        trickManager.clearTrick();
+        trickManager.reset();
     }
 
     public boolean playCard(int playerIndex, Card card) {
@@ -125,17 +126,20 @@ public class CrewEngine {
             return false;
         }
 
+        // ask trick manager to validate + record
+        if (!trickManager.playCard(playerIndex, card, player.getHand())) {
+            return false;
+        }
+
+        // remove ONLY after validation success
         player.removeCardFromHand(card);
 
-        trickManager.playCard(playerIndex, card);
+        // trick finished?
+        if (trickManager.isComplete(players.size())) {
 
-        if (trickManager.isTrickComplete(players.size())) {
+            currentPlayerIndex = trickManager.getWinner();
 
-            int winner = trickManager.determineWinner();
-
-            currentPlayerIndex = winner;
-
-            trickManager.clearTrick();
+            trickManager.reset();
 
         } else {
             nextPlayer();
