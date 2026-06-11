@@ -18,10 +18,11 @@ public class CrewEngine {
     private int captainIndex = 0;
 
     private GamePhase phase = GamePhase.TASK_SELECTION;
-    
+
     private final CardManager cardManager = new CardManager();
     private TaskSelectionManager taskManager;
     private final TrickManager trickManager = new TrickManager();
+    private final MissionFactory missionFactory = new MissionFactory(TaskLibrary.getAllTasks());
 
     // =========================
     // SETUP
@@ -34,15 +35,15 @@ public class CrewEngine {
         }
     }
 
-    public void addMission(Mission mission) {
-        missions.add(mission);
-    }
-
     // =========================
     // GAME LIFECYCLE
     // =========================
 
     public void startGame() {
+        missions.clear();
+        missions.add(missionFactory.createMission(1, 3, players.size()));
+        missions.add(missionFactory.createMission(2, 2, players.size()));
+        missions.add(missionFactory.createMission(3, 3, players.size()));
         captainIndex = cardManager.determineCaptain(players);
         startTaskSelectionPhase();
     }

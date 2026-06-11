@@ -11,7 +11,6 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class GameController {
@@ -42,7 +41,6 @@ public class GameController {
     public void initialize() {
         initPlayerUIs();
         engine.createPlayers(playerCount);
-        setupMissions();
         engine.dealCards();
         engine.startGame(); // IMPORTANT
 
@@ -68,18 +66,6 @@ public class GameController {
                 new PlayerUI(hand3, slot3, taskHand3),
                 new PlayerUI(hand4, slot4, taskHand4)
         );
-    }
-
-    private void setupMissions() {
-        List<Task> mission1Tasks = new ArrayList<>();
-        mission1Tasks.add(new Task("Task 1",1,1,1));
-
-        List<Task> mission2Tasks = new ArrayList<>();
-        mission2Tasks.add(new Task("Task 3",1,1,1));
-        mission2Tasks.add(new Task("Task 4",1,1,1));
-
-        engine.addMission(new Mission("Mission 1", mission1Tasks));
-        engine.addMission(new Mission("Mission 2", mission2Tasks));
     }
 
     private void setupPlayerViews() {
