@@ -72,11 +72,11 @@ public class GameController {
 
     private void setupMissions() {
         List<Task> mission1Tasks = new ArrayList<>();
-        mission1Tasks.add(new Task("Task 1"));
+        mission1Tasks.add(new Task("Task 1",1,1,1));
 
         List<Task> mission2Tasks = new ArrayList<>();
-        mission2Tasks.add(new Task("Task 3"));
-        mission2Tasks.add(new Task("Task 4"));
+        mission2Tasks.add(new Task("Task 3",1,1,1));
+        mission2Tasks.add(new Task("Task 4",1,1,1));
 
         engine.addMission(new Mission("Mission 1", mission1Tasks));
         engine.addMission(new Mission("Mission 2", mission2Tasks));
