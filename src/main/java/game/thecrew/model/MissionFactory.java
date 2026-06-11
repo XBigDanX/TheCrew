@@ -13,19 +13,18 @@ public class MissionFactory {
     }
 
     public Mission createMission(int id, int difficulty, int playerCount) {
-        Mission mission = new Mission(id, difficulty);
-
         List<Task> shuffled = new ArrayList<>(taskPool);
         Collections.shuffle(shuffled);
 
+        List<ActiveMissionTask> selectedTasks = new ArrayList<>();
         int sum = 0;
         for (Task task : shuffled) {
             if (sum + task.getValue(playerCount) <= difficulty) {
-                mission.getTasks().add(task);
+                selectedTasks.add(new ActiveMissionTask(task));
                 sum += task.getValue(playerCount);
             }
         }
 
-        return mission;
+        return new Mission(id, difficulty, selectedTasks);
     }
 }

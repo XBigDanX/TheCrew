@@ -106,10 +106,10 @@ public class GameController {
             return;
         }
 
-        for (Task task : mission.getTasks()) {
-            TaskView taskView = new TaskView(task);
+        for (ActiveMissionTask activeTask : mission.getTasks()) {
+            TaskView taskView = new TaskView(activeTask.getTask());
             taskView.setOnMouseClicked(e ->
-                    onTaskClicked(playerIndexFromTurn(), task)
+                    onTaskClicked(playerIndexFromTurn(), activeTask)
             );
             availableTasksBox.getChildren().add(taskView);
         }
@@ -128,12 +128,12 @@ public class GameController {
         updateCurrentPlayerLabel();
     }
 
-    private void onTaskClicked(int playerIndex, Task task) {
+    private void onTaskClicked(int playerIndex, ActiveMissionTask task) {
         if (!engine.selectTask(playerIndex, task)) {
             return;
         }
 
-        TaskView completedTask = new TaskView(task);
+        TaskView completedTask = new TaskView(task.getTask());
         completedTask.setCompleted(true);
 
         playerUIs.get(playerIndex)

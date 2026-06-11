@@ -65,7 +65,7 @@ public class CrewEngine {
     // TASK SELECTION
     // =========================
 
-    public boolean selectTask(int playerIndex, Task task) {
+    public boolean selectTask(int playerIndex, ActiveMissionTask task) {
         if (phase != GamePhase.TASK_SELECTION || taskManager == null) {
             return false;
         }

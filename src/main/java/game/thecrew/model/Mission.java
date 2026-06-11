@@ -1,17 +1,17 @@
 package game.thecrew.model;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class Mission {
 
     private final int id;
     private final int difficulty;
-    private final List<Task> tasks = new ArrayList<>();
+    private final List<ActiveMissionTask> tasks;
 
-    public Mission(int id, int difficulty) {
+    public Mission(int id, int difficulty, List<ActiveMissionTask> tasks) {
         this.id = id;
         this.difficulty = difficulty;
+        this.tasks = tasks;
     }
 
     public int getId() {
@@ -22,7 +22,7 @@ public class Mission {
         return difficulty;
     }
 
-    public List<Task> getTasks() {
+    public List<ActiveMissionTask> getTasks() {
         return tasks;
     }
 }
