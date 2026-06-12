@@ -1,4 +1,4 @@
-package game.thecrew;
+package game.thecrew.engine;
 
 import game.thecrew.model.Card;
 import game.thecrew.model.CardColor;

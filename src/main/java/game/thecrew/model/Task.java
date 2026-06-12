@@ -6,16 +6,22 @@ public class Task {
     private final int value23;
     private final int value4;
     private final int value5;
+    private final TaskRule rule;
 
-    public Task(String description, int value23, int value4, int value5) {
+    public Task(String description, int value23, int value4, int value5, TaskRule rule) {
         this.description = description;
         this.value23 = value23;
         this.value4 = value4;
         this.value5 = value5;
+        this.rule = rule;
     }
 
     public String getDescription() {
         return description;
+    }
+
+    public TaskRule getRule() {
+        return rule;
     }
 
     public int getValue(int playerCount) {

@@ -1,4 +1,4 @@
-package game.thecrew;
+package game.thecrew.engine;
 
 import game.thecrew.model.ActiveMissionTask;
 import game.thecrew.model.Player;
@@ -33,7 +33,6 @@ public class TaskSelectionManager {
         Player player = players.get(playerIndex);
         task.assignPlayer(playerIndex);
         player.addTask(task);
-        availableTasks.remove(task);
         playersProcessed++;
     }
 
@@ -42,6 +41,11 @@ public class TaskSelectionManager {
     }
 
     public boolean isSelectionFinished() {
-        return availableTasks.isEmpty();
+        for (ActiveMissionTask task : availableTasks) {
+            if (task.getAssignedPlayer() == null) {
+                return false;
+            }
+        }
+        return true;
     }
 }

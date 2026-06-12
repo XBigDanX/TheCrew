@@ -1,5 +1,7 @@
 package game.thecrew;
 
+import game.thecrew.engine.CrewEngine;
+import game.thecrew.engine.TrickManager;
 import game.thecrew.model.*;
 import game.thecrew.ui.CardView;
 import game.thecrew.ui.PlayerUI;
@@ -107,11 +109,13 @@ public class GameController {
         }
 
         for (ActiveMissionTask activeTask : mission.getTasks()) {
-            TaskView taskView = new TaskView(activeTask.getTask());
-            taskView.setOnMouseClicked(e ->
-                    onTaskClicked(playerIndexFromTurn(), activeTask)
-            );
-            availableTasksBox.getChildren().add(taskView);
+            if (activeTask.getAssignedPlayer() == null) {
+                TaskView taskView = new TaskView(activeTask.getTask());
+                taskView.setOnMouseClicked(e ->
+                        onTaskClicked(playerIndexFromTurn(), activeTask)
+                );
+                availableTasksBox.getChildren().add(taskView);
+            }
         }
     }
 
@@ -133,14 +137,7 @@ public class GameController {
             return;
         }
 
-        TaskView completedTask = new TaskView(task.getTask());
-        completedTask.setCompleted(true);
-
-        playerUIs.get(playerIndex)
-                .getTaskHand()
-                .getChildren()
-                .add(completedTask);
-
+        updateTaskUI();
         renderTasks();
         updateCurrentPlayerLabel();
         updatePhasePanels();
@@ -151,14 +148,45 @@ public class GameController {
             return;
         }
 
+
         renderPlayerHand(playerIndex);
 
         Pane slot = playerUIs.get(playerIndex).getSlot();
         slot.getChildren().clear();
         slot.getChildren().add(new CardView(card));
 
+        // If trick was completed, clear it after a short delay
+        if (engine.getTrickManager().getCurrentTrick().getPlays().isEmpty()) {
+            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(1));
+            pause.setOnFinished(e -> clearTrickSlots());
+            pause.play();
+        }
+
+        // update task completion in UI
+        updateTaskUI();
+
         updateCurrentPlayerLabel();
         updatePhasePanels();
+    }
+
+    private void clearTrickSlots() {
+        for (PlayerUI ui : playerUIs) {
+            ui.getSlot().getChildren().clear();
+        }
+    }
+
+    private void updateTaskUI() {
+        for (int i = 0; i < playerCount; i++) {
+            HBox taskHand = playerUIs.get(i).getTaskHand();
+            taskHand.getChildren().clear();
+
+            Player player = engine.getPlayers().get(i);
+            for (ActiveMissionTask activeTask : player.getTaskHand()) {
+                TaskView taskView = new TaskView(activeTask.getTask());
+                taskView.setCompleted(activeTask.isCompleted());
+                taskHand.getChildren().add(taskView);
+            }
+        }
     }
 
     // =========================

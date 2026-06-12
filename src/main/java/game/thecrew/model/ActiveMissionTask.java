@@ -26,8 +26,24 @@ public class ActiveMissionTask {
         return completed;
     }
 
-    public boolean canComplete() {
-        return true;
+    public void checkTrick(Mission mission, Trick trick, int winner) {
+        if (completed || assignedPlayer == null || !task.getRule().isTrickBased()) return;
+
+        boolean success = task.getRule().checkTrick(mission, trick, winner);
+
+        if (success && assignedPlayer == winner) {
+            markCompleted();
+        }
+    }
+
+    public void checkMissionEnd(Mission mission) {
+        if (completed || assignedPlayer == null) return;
+
+        if (!task.getRule().isTrickBased()) {
+            if (task.getRule().checkMissionEnd(mission, assignedPlayer)) {
+                markCompleted();
+            }
+        }
     }
 
     public void markCompleted() {

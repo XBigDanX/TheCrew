@@ -1,11 +1,11 @@
-package game.thecrew;
+package game.thecrew.engine;
 
+import game.thecrew.mission.MissionFactory;
+import game.thecrew.mission.TaskLibrary;
 import game.thecrew.model.*;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 public class CrewEngine {
 
@@ -181,5 +181,9 @@ public class CrewEngine {
 
     public List<Player> getPlayers() {
         return players;
+    }
+
+    public TrickManager getTrickManager() {
+        return trickManager;
     }
 }

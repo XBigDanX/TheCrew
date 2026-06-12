@@ -1,4 +1,8 @@
-package game.thecrew.model;
+package game.thecrew.mission;
+
+import game.thecrew.model.ActiveMissionTask;
+import game.thecrew.model.Mission;
+import game.thecrew.model.Task;
 
 import java.util.ArrayList;
 import java.util.Collections;

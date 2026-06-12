@@ -34,6 +34,10 @@ public class Mission {
 
     public void addCompletedTrick(Trick trick) {
         completedTricks.add(trick);
+        int winner = trick.getWinnerIndex(trick.getLeadSuit());
+        for (ActiveMissionTask task : tasks) {
+            task.checkTrick(this, trick, winner);
+        }
     }
 
     public int getCompletedTricksCount() {
