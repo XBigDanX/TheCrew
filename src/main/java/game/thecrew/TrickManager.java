@@ -25,6 +25,10 @@ public class TrickManager {
         return currentTrick.getPlays().size() == playerCount;
     }
 
+    public Trick getCurrentTrick() {
+        return currentTrick;
+    }
+
     public int getWinner() {
         return currentTrick.getWinnerIndex(currentTrick.getLeadSuit());
     }

@@ -138,6 +138,9 @@ public class CrewEngine {
         // trick finished?
         if (trickManager.isComplete(players.size())) {
 
+            Trick completed = trickManager.getCurrentTrick();
+            getCurrentMission().addCompletedTrick(completed);
+
             currentPlayerIndex = trickManager.getWinner();
 
             trickManager.reset();
