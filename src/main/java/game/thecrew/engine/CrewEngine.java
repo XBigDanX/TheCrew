@@ -19,6 +19,8 @@ public class CrewEngine {
 
     private GamePhase phase = GamePhase.TASK_SELECTION;
 
+    private int cardsPlayedInMission = 0;
+
     private final CardManager cardManager = new CardManager();
     private TaskSelectionManager taskManager;
     private final TrickManager trickManager = new TrickManager();
@@ -45,6 +47,7 @@ public class CrewEngine {
         missions.add(missionFactory.createMission(2, 2, players.size()));
         missions.add(missionFactory.createMission(3, 3, players.size()));
         captainIndex = cardManager.determineCaptain(players);
+        cardsPlayedInMission = 0;
         startTaskSelectionPhase();
     }
 
@@ -134,6 +137,7 @@ public class CrewEngine {
 
         // remove ONLY after validation success
         player.removeCardFromHand(card);
+        cardsPlayedInMission++;
 
         // trick finished?
         if (trickManager.isComplete(players.size())) {
@@ -145,11 +149,83 @@ public class CrewEngine {
 
             trickManager.reset();
 
+            // After trick is fully processed, check if the mission is over
+            if (cardsPlayedInMission >= getExpectedCardsToBePlayed()) {
+                evaluateMissionEnd();
+                phase = GamePhase.MISSION_COMPLETE;
+            }
+
         } else {
             nextPlayer();
         }
 
         return true;
+    }
+
+    // =========================
+    // MISSION EVALUATION
+    // =========================
+
+    private int getExpectedCardsToBePlayed() {
+        int count = players.size();
+        if (count == 3) return 39;
+        return 40;
+    }
+
+    // =========================
+    // MISSION FLOW CONTROL
+    // =========================
+
+    public void advanceToNextMission() {
+        currentMissionIndex++;
+        if (currentMissionIndex >= missions.size()) {
+            phase = GamePhase.MISSION_COMPLETE;
+            return;
+        }
+        cardsPlayedInMission = 0;
+        clearAndRedeal();
+        captainIndex = cardManager.determineCaptain(players);
+        getCurrentMission().setStatus(MissionStatus.IN_PROGRESS);
+        startTaskSelectionPhase();
+    }
+
+    public void restartCurrentMission() {
+        Mission current = getCurrentMission();
+        Mission fresh = missionFactory.createMission(current.getId(), current.getDifficulty(), players.size());
+        missions.set(currentMissionIndex, fresh);
+        cardsPlayedInMission = 0;
+        clearAndRedeal();
+        captainIndex = cardManager.determineCaptain(players);
+        startTaskSelectionPhase();
+    }
+
+    public boolean isGameOver() {
+        return currentMissionIndex >= missions.size() - 1;
+    }
+
+    private void clearAndRedeal() {
+        for (Player player : players) {
+            player.getHand().clear();
+            player.getTaskHand().clear();
+        }
+        dealCards();
+    }
+
+    private void evaluateMissionEnd() {
+        Mission mission = getCurrentMission();
+        // Evaluate non-trick-based tasks that trigger at mission end
+        for (ActiveMissionTask task : mission.getTasks()) {
+            task.checkMissionEnd(mission);
+        }
+        // All tasks must be completed for success
+        boolean allCompleted = true;
+        for (ActiveMissionTask task : mission.getTasks()) {
+            if (!task.isCompleted()) {
+                allCompleted = false;
+                break;
+            }
+        }
+        mission.setStatus(allCompleted ? MissionStatus.SUCCESS : MissionStatus.FAILED);
     }
 
     // =========================

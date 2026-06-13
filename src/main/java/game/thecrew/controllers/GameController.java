@@ -11,6 +11,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 
 import java.util.List;
 
@@ -29,6 +30,12 @@ public class GameController {
 
     @FXML private FlowPane hand0,hand1,hand2,hand3,hand4;
     @FXML private HBox taskHand0,taskHand1,taskHand2,taskHand3,taskHand4;
+
+    @FXML private StackPane missionResultOverlay;
+    @FXML private Label resultTitleLabel;
+    @FXML private Label resultMessageLabel;
+    @FXML private Button nextMissionButton;
+    @FXML private Button retryButton;
 
     private List<PlayerUI> playerUIs;
 
@@ -56,6 +63,15 @@ public class GameController {
         renderTasks();
 
         passTaskSelectionButton.setOnAction(e -> onPassClicked());
+
+        nextMissionButton.setOnAction(e -> {
+            session.getEngine().advanceToNextMission();
+            refreshAfterMissionTransition();
+        });
+        retryButton.setOnAction(e -> {
+            session.getEngine().restartCurrentMission();
+            refreshAfterMissionTransition();
+        });
 
         updateMissionLabels();
         updateCurrentPlayerLabel();
@@ -164,7 +180,10 @@ public class GameController {
         // If trick was completed, clear it after a short delay
         if (session.getEngine().getTrickManager().getCurrentTrick().getPlays().isEmpty()) {
             javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(1));
-            pause.setOnFinished(e -> clearTrickSlots());
+            pause.setOnFinished(e -> {
+                clearTrickSlots();
+                handleMissionEnd();
+            });
             pause.play();
         }
 
@@ -237,6 +256,38 @@ public class GameController {
 
         trickPane.setVisible(true);
         trickPane.setManaged(true);
+    }
+
+    private void handleMissionEnd() {
+        if (session.getEngine().getPhase() != GamePhase.MISSION_COMPLETE) {
+            return;
+        }
+        MissionStatus status = session.getEngine().getCurrentMission().getStatus();
+        if (status == MissionStatus.SUCCESS) {
+            resultTitleLabel.setText("Mission Complete!");
+            resultMessageLabel.setText("All tasks were completed.");
+            nextMissionButton.setVisible(true);
+            nextMissionButton.setManaged(true);
+        } else {
+            resultTitleLabel.setText("Mission Failed");
+            resultMessageLabel.setText("Not all tasks were completed.");
+            nextMissionButton.setVisible(false);
+            nextMissionButton.setManaged(false);
+        }
+        missionResultOverlay.setVisible(true);
+        missionResultOverlay.setManaged(true);
+    }
+
+    private void refreshAfterMissionTransition() {
+        missionResultOverlay.setVisible(false);
+        missionResultOverlay.setManaged(false);
+        clearTrickSlots();
+        renderAllHands();
+        renderTasks();
+        updateTaskUI();
+        updateMissionLabels();
+        updateCurrentPlayerLabel();
+        updatePhasePanels();
     }
 
     private int playerIndexFromTurn() {
