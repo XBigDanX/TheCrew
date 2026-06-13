@@ -1,7 +1,6 @@
-package game.thecrew;
+package game.thecrew.controllers;
 
-import game.thecrew.engine.CrewEngine;
-import game.thecrew.engine.TrickManager;
+import game.thecrew.GameSession;
 import game.thecrew.model.*;
 import game.thecrew.ui.CardView;
 import game.thecrew.ui.PlayerUI;
@@ -31,9 +30,14 @@ public class GameController {
 
     private List<PlayerUI> playerUIs;
 
-    private final CrewEngine engine = new CrewEngine();
+    private static GameSession pendingSession;
 
-    private final int playerCount = 4;
+    public static void setSession(GameSession session) {
+        pendingSession = session;
+    }
+
+    private GameSession session;
+    private int playerCount;
 
     // =========================
     // INIT
@@ -41,11 +45,10 @@ public class GameController {
 
     @FXML
     public void initialize() {
-        initPlayerUIs();
-        engine.createPlayers(playerCount);
-        engine.dealCards();
-        engine.startGame(); // IMPORTANT
+        session = pendingSession;
+        playerCount = session.getPlayerCount();
 
+        initPlayerUIs();
         setupPlayerViews();
         renderAllHands();
         renderTasks();
@@ -87,7 +90,7 @@ public class GameController {
     }
 
     private void renderPlayerHand(int playerIndex) {
-        Player player = engine.getPlayers().get(playerIndex);
+        Player player = session.getEngine().getPlayers().get(playerIndex);
         FlowPane handPane = playerUIs.get(playerIndex).getHand();
         handPane.getChildren().clear();
 
@@ -102,7 +105,7 @@ public class GameController {
 
     private void renderTasks() {
         availableTasksBox.getChildren().clear();
-        Mission mission = engine.getCurrentMission();
+        Mission mission = session.getEngine().getCurrentMission();
 
         if (mission == null) {
             return;
@@ -124,8 +127,8 @@ public class GameController {
     // =========================
 
     private void onPassClicked() {
-        int playerIndex = engine.getCurrentPlayerIndex();
-        if (!engine.passTaskSelection(playerIndex)) {
+        int playerIndex = session.getEngine().getCurrentPlayerIndex();
+        if (!session.getEngine().passTaskSelection(playerIndex)) {
             return;
         }
         renderTasks();
@@ -133,7 +136,7 @@ public class GameController {
     }
 
     private void onTaskClicked(int playerIndex, ActiveMissionTask task) {
-        if (!engine.selectTask(playerIndex, task)) {
+        if (!session.getEngine().selectTask(playerIndex, task)) {
             return;
         }
 
@@ -144,7 +147,7 @@ public class GameController {
     }
 
     private void onCardClicked(int playerIndex, Card card) {
-        if (!engine.playCard(playerIndex, card)) {
+        if (!session.getEngine().playCard(playerIndex, card)) {
             return;
         }
 
@@ -156,7 +159,7 @@ public class GameController {
         slot.getChildren().add(new CardView(card));
 
         // If trick was completed, clear it after a short delay
-        if (engine.getTrickManager().getCurrentTrick().getPlays().isEmpty()) {
+        if (session.getEngine().getTrickManager().getCurrentTrick().getPlays().isEmpty()) {
             javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(1));
             pause.setOnFinished(e -> clearTrickSlots());
             pause.play();
@@ -180,7 +183,7 @@ public class GameController {
             HBox taskHand = playerUIs.get(i).getTaskHand();
             taskHand.getChildren().clear();
 
-            Player player = engine.getPlayers().get(i);
+            Player player = session.getEngine().getPlayers().get(i);
             for (ActiveMissionTask activeTask : player.getTaskHand()) {
                 TaskView taskView = new TaskView(activeTask.getTask());
                 taskView.setCompleted(activeTask.isCompleted());
@@ -195,12 +198,12 @@ public class GameController {
 
     private void updateCurrentPlayerLabel() {
         currentPlayerLabel.setText(
-                "Current Turn: Player " + (engine.getCurrentPlayerIndex()+1)
+                "Current Turn: Player " + (session.getEngine().getCurrentPlayerIndex()+1)
         );
     }
 
     private void updatePhasePanels() {
-        if (engine.getPhase() == GamePhase.TASK_SELECTION) {
+        if (session.getEngine().getPhase() == GamePhase.TASK_SELECTION) {
             showTaskPhase();
         } else {
             showTrickPhase();
@@ -228,6 +231,6 @@ public class GameController {
     }
 
     private int playerIndexFromTurn() {
-        return engine.getCurrentPlayerIndex();
+        return session.getEngine().getCurrentPlayerIndex();
     }
 }

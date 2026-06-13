@@ -7,4 +7,6 @@ module game.thecrew {
     exports game.thecrew;
     exports game.thecrew.engine;
     opens game.thecrew.engine to javafx.fxml;
+    exports game.thecrew.controllers;
+    opens game.thecrew.controllers to javafx.fxml;
 }
