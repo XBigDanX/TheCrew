@@ -31,7 +31,7 @@ public class PlayerCountController {
         GameController.setSession(session);
 
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("GameBoard.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/game/thecrew/GameBoard.fxml"));
             root.getScene().setRoot(loader.load());
         } catch (Exception e) {
             e.printStackTrace();

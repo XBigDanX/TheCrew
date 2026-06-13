@@ -16,6 +16,8 @@ import java.util.List;
 
 public class GameController {
 
+    @FXML private Label missionLabel;
+    @FXML private Label difficultyLabel;
     @FXML private Label currentPlayerLabel;
     @FXML private Button passTaskSelectionButton;
 
@@ -55,6 +57,7 @@ public class GameController {
 
         passTaskSelectionButton.setOnAction(e -> onPassClicked());
 
+        updateMissionLabels();
         updateCurrentPlayerLabel();
         updatePhasePanels();
     }
@@ -195,6 +198,12 @@ public class GameController {
     // =========================
     // UI UPDATES & HELPERS
     // =========================
+
+    private void updateMissionLabels() {
+        Mission mission = session.getEngine().getCurrentMission();
+        missionLabel.setText("Mission " + session.getEngine().getCurrentMissionNumber());
+        difficultyLabel.setText("Difficulty: " + (mission != null ? mission.getDifficulty() : "?"));
+    }
 
     private void updateCurrentPlayerLabel() {
         currentPlayerLabel.setText(

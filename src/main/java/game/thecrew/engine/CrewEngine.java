@@ -41,7 +41,7 @@ public class CrewEngine {
 
     public void startGame() {
         missions.clear();
-        missions.add(missionFactory.createMission(1, 3, players.size()));
+        missions.add(missionFactory.createMission(1, 1, players.size()));
         missions.add(missionFactory.createMission(2, 2, players.size()));
         missions.add(missionFactory.createMission(3, 3, players.size()));
         captainIndex = cardManager.determineCaptain(players);
@@ -170,6 +170,10 @@ public class CrewEngine {
 
     public GamePhase getPhase() {
         return phase;
+    }
+
+    public int getCurrentMissionNumber() {
+        return currentMissionIndex + 1;
     }
 
     public Mission getCurrentMission() {

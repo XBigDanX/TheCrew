@@ -9,7 +9,6 @@ import java.util.List;
 public class GameSession {
 
     private final int playerCount;
-    private int currentMissionNumber;
     private final CrewEngine engine;
 
     public GameSession(int playerCount) {
@@ -17,7 +16,6 @@ public class GameSession {
             throw new IllegalArgumentException("Player count must be between 3 and 5, got: " + playerCount);
         }
         this.playerCount = playerCount;
-        this.currentMissionNumber = 1;
         this.engine = new CrewEngine();
     }
 
@@ -33,10 +31,6 @@ public class GameSession {
 
     public List<Player> getPlayers() {
         return engine.getPlayers();
-    }
-
-    public int getCurrentMissionNumber() {
-        return currentMissionNumber;
     }
 
     public Mission getCurrentMission() {
