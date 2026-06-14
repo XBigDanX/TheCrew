@@ -1,6 +1,8 @@
 package game.thecrew.controllers;
 
 import game.thecrew.GameSession;
+import javafx.animation.PauseTransition;
+import javafx.util.Duration;
 import game.thecrew.model.*;
 import game.thecrew.ui.CardView;
 import game.thecrew.ui.PlayerUI;
@@ -19,8 +21,10 @@ public class GameController {
 
     @FXML private Label missionLabel;
     @FXML private Label difficultyLabel;
+    @FXML private Label missionDescriptionLabel;
     @FXML private Label currentPlayerLabel;
     @FXML private Button passTaskSelectionButton;
+    @FXML private Button communicateButton; // reserved for per-window view
 
     @FXML private Pane taskPane;
     @FXML private HBox availableTasksBox;
@@ -30,6 +34,8 @@ public class GameController {
 
     @FXML private FlowPane hand0,hand1,hand2,hand3,hand4;
     @FXML private HBox taskHand0,taskHand1,taskHand2,taskHand3,taskHand4;
+    @FXML private StackPane commArea0,commArea1,commArea2,commArea3,commArea4;
+    @FXML private Label infoLabel0,infoLabel1,infoLabel2,infoLabel3,infoLabel4;
 
     @FXML private StackPane missionResultOverlay;
     @FXML private Label resultTitleLabel;
@@ -48,6 +54,10 @@ public class GameController {
     private GameSession session;
     private int playerCount;
 
+    private Label[] infoLabels;
+
+    private Button[] commActionButtons;
+
     // =========================
     // INIT
     // =========================
@@ -59,10 +69,12 @@ public class GameController {
 
         initPlayerUIs();
         setupPlayerViews();
+        updateInfoLabels();
         renderAllHands();
         renderTasks();
 
         passTaskSelectionButton.setOnAction(e -> onPassClicked());
+        initCommButtons();
 
         nextMissionButton.setOnAction(e -> {
             session.getEngine().advanceToNextMission();
@@ -84,17 +96,47 @@ public class GameController {
 
     private void initPlayerUIs() {
         playerUIs = List.of(
-                new PlayerUI(hand0, slot0, taskHand0),
-                new PlayerUI(hand1, slot1, taskHand1),
-                new PlayerUI(hand2, slot2, taskHand2),
-                new PlayerUI(hand3, slot3, taskHand3),
-                new PlayerUI(hand4, slot4, taskHand4)
+                new PlayerUI(hand0, slot0, taskHand0, commArea0),
+                new PlayerUI(hand1, slot1, taskHand1, commArea1),
+                new PlayerUI(hand2, slot2, taskHand2, commArea2),
+                new PlayerUI(hand3, slot3, taskHand3, commArea3),
+                new PlayerUI(hand4, slot4, taskHand4, commArea4)
         );
+        infoLabels = new Label[]{infoLabel0, infoLabel1, infoLabel2, infoLabel3, infoLabel4};
+    }
+
+    private void initCommButtons() {
+        commActionButtons = new Button[playerUIs.size()];
+        for (int i = 0; i < playerUIs.size(); i++) {
+            Button btn = new Button();
+            btn.setMinSize(30, 30);
+            btn.setMaxSize(30, 30);
+            btn.setShape(new javafx.scene.shape.Circle(15));
+            btn.setStyle("-fx-background-color: green; -fx-cursor: hand;");
+            btn.setManaged(false);
+            btn.setVisible(false);
+            int idx = i;
+            btn.setOnAction(e -> onCommunicateClicked(idx));
+            StackPane.setAlignment(btn, javafx.geometry.Pos.CENTER);
+            playerUIs.get(i).getCommunicationArea().getChildren().add(btn);
+            commActionButtons[i] = btn;
+        }
     }
 
     private void setupPlayerViews() {
         for (int i = 0; i < playerUIs.size(); i++) {
             playerUIs.get(i).setVisible(i < playerCount);
+            infoLabels[i].setVisible(i < playerCount && i < 2);
+        }
+    }
+
+    private void updateInfoLabels() {
+        Mission mission = session.getEngine().getCurrentMission();
+        for (int i = 0; i < playerCount && i < 2; i++) {
+            int tricks = mission.getPlayerWinCount(i);
+            int cards = session.getEngine().getPlayers().get(i).getHand().size();
+            String captain = i == mission.getCaptainIndex() ? "  [Captain]" : "";
+            infoLabels[i].setText("Tricks: " + tricks + "  Cards: " + cards + captain);
         }
     }
 
@@ -113,11 +155,21 @@ public class GameController {
         FlowPane handPane = playerUIs.get(playerIndex).getHand();
         handPane.getChildren().clear();
 
+        int commPlayerIdx = session.getEngine().getCommunicationPlayerIndex();
+        List<Card> validCommCards = (commPlayerIdx == playerIndex)
+                ? session.getEngine().getValidCommunicationCards(playerIndex)
+                : null;
+
         for (Card card : player.getHand()) {
             CardView cardView = new CardView(card);
-            cardView.setOnMouseClicked(e ->
-                    onCardClicked(playerIndex, card)
-            );
+
+            if (validCommCards != null && validCommCards.contains(card)) {
+                cardView.setStyle("-fx-border-color: yellow; -fx-border-width: 2;");
+                cardView.setOnMouseClicked(e -> onCommunicationCardSelected(playerIndex, card));
+            } else if (commPlayerIdx == -1) {
+                cardView.setOnMouseClicked(e -> onCardClicked(playerIndex, card));
+            }
+
             handPane.getChildren().add(cardView);
         }
     }
@@ -130,9 +182,9 @@ public class GameController {
             return;
         }
 
-        for (ActiveMissionTask activeTask : mission.getTasks()) {
+        for (Task activeTask : mission.getTasks()) {
             if (activeTask.getAssignedPlayer() == null) {
-                TaskView taskView = new TaskView(activeTask.getTask());
+                TaskView taskView = new TaskView(activeTask);
                 taskView.setOnMouseClicked(e ->
                         onTaskClicked(playerIndexFromTurn(), activeTask)
                 );
@@ -154,13 +206,14 @@ public class GameController {
         updateCurrentPlayerLabel();
     }
 
-    private void onTaskClicked(int playerIndex, ActiveMissionTask task) {
+    private void onTaskClicked(int playerIndex, Task task) {
         if (!session.getEngine().selectTask(playerIndex, task)) {
             return;
         }
 
         updateTaskUI();
         renderTasks();
+        updateInfoLabels();
         updateCurrentPlayerLabel();
         updatePhasePanels();
     }
@@ -169,7 +222,6 @@ public class GameController {
         if (!session.getEngine().playCard(playerIndex, card)) {
             return;
         }
-
 
         renderPlayerHand(playerIndex);
 
@@ -182,6 +234,9 @@ public class GameController {
             javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(1));
             pause.setOnFinished(e -> {
                 clearTrickSlots();
+                renderAllHands();
+                updateInfoLabels();
+                updateCommunicationUI();
                 handleMissionEnd();
             });
             pause.play();
@@ -192,6 +247,111 @@ public class GameController {
 
         updateCurrentPlayerLabel();
         updatePhasePanels();
+    }
+
+    private void onCommunicateClicked(int playerIndex) {
+        session.getEngine().requestCommunication(playerIndex);
+        renderAllHands();
+        updateCommunicationUI();
+        updatePhasePanels();
+    }
+
+    private void onCommunicationCardSelected(int playerIndex, Card card) {
+        TokenPosition pos = session.getEngine().resolveCommunicationPosition(playerIndex, card);
+        if (pos == null) return;
+
+        if (session.getEngine().selectCommunicationCard(playerIndex, card, pos)) {
+            renderAllHands();
+            updateCommunicationUI();
+            updatePhasePanels();
+
+            // Automatska primjena tokena (ako motor to već ne radi odmah, ali mi želimo efekt od 5 sekundi)
+            // U našem motoru, selectCommunicationCard postavlja phase na TRICKING i čisti pending.
+            // Ali mi ga želimo u "active tokens" za prikaz.
+            
+            // Budući da selectCommunicationCard postavlja pendingTokens[playerIndex] i vraća phase u TRICKING,
+            // moramo osigurati da se taj pending token premjesti u active (što se obično događa na početku trika).
+            // Za ovaj vizualni efekt, možemo ga odmah "primijeniti" za prikaz.
+            
+            session.getEngine().applyPendingTokens();
+            updateCommunicationUI();
+
+            PauseTransition pause = new PauseTransition(Duration.seconds(5));
+            pause.setOnFinished(e -> {
+                session.getEngine().removeActiveToken(playerIndex);
+                updateCommunicationUI();
+            });
+            pause.play();
+        }
+    }
+
+    private void updateCommunicationUI() {
+        Mission mission = session.getEngine().getCurrentMission();
+        if (mission == null) return;
+
+        boolean phaseIsComm = session.getEngine().getPhase() == GamePhase.COMMUNICATION;
+        boolean phaseIsTricking = session.getEngine().getPhase() == GamePhase.TRICKING;
+        boolean showButtons = phaseIsComm || phaseIsTricking;
+        int commPlayerIdx = session.getEngine().getCommunicationPlayerIndex();
+
+        for (int i = 0; i < playerCount; i++) {
+            Pane commArea = playerUIs.get(i).getCommunicationArea();
+            commArea.getChildren().clear();
+
+            Button btn = commActionButtons[i];
+            commArea.getChildren().add(btn);
+
+            btn.setManaged(showButtons);
+            btn.setVisible(showButtons);
+            if (showButtons) {
+                boolean alreadyUsed = mission.hasPlayerUsedToken(i);
+                if (alreadyUsed) {
+                    btn.setStyle("-fx-background-color: red; -fx-cursor: default;");
+                    btn.setDisable(true);
+                } else if (phaseIsComm) {
+                    if (commPlayerIdx == i) {
+                        btn.setStyle("-fx-background-color: red; -fx-cursor: hand;");
+                        btn.setDisable(false);
+                    } else if (commPlayerIdx == -1) {
+                        boolean canComm = !alreadyUsed &&
+                                          !session.getEngine().getValidCommunicationCards(i).isEmpty();
+                        btn.setStyle(canComm
+                            ? "-fx-background-color: green; -fx-cursor: hand;"
+                            : "-fx-background-color: grey; -fx-cursor: default;");
+                        btn.setDisable(!canComm);
+                    } else {
+                        btn.setDisable(true);
+                    }
+                } else {
+                    // TRICKING phase — show queue state
+                    if (session.getEngine().isCommunicationRequested(i)) {
+                        btn.setStyle("-fx-background-color: orange; -fx-cursor: hand;");
+                        btn.setDisable(false);
+                    } else {
+                        btn.setStyle("-fx-background-color: green; -fx-cursor: hand;");
+                        btn.setDisable(false);
+                    }
+                }
+            }
+
+            // Show active tokens
+            for (CommunicationToken token : mission.getActiveTokens()) {
+                if (token.getPlayerIndex() == i) {
+                    CardView cv = new CardView(token.getCard());
+                    cv.addToken(token.getPosition());
+                    commArea.getChildren().add(cv);
+                }
+            }
+
+            // Show pending tokens
+            CommunicationToken[] pending = session.getEngine().getPendingTokens();
+            if (pending != null && pending[i] != null) {
+                CardView cv = new CardView(pending[i].getCard());
+                cv.addToken(pending[i].getPosition());
+                cv.setOpacity(0.6);
+                commArea.getChildren().add(cv);
+            }
+        }
     }
 
     private void clearTrickSlots() {
@@ -206,8 +366,8 @@ public class GameController {
             taskHand.getChildren().clear();
 
             Player player = session.getEngine().getPlayers().get(i);
-            for (ActiveMissionTask activeTask : player.getTaskHand()) {
-                TaskView taskView = new TaskView(activeTask.getTask());
+            for (Task activeTask : player.getTaskHand()) {
+                TaskView taskView = new TaskView(activeTask);
                 taskView.setCompleted(activeTask.isCompleted());
                 taskHand.getChildren().add(taskView);
             }
@@ -222,6 +382,7 @@ public class GameController {
         Mission mission = session.getEngine().getCurrentMission();
         missionLabel.setText("Mission " + session.getEngine().getCurrentMissionNumber());
         difficultyLabel.setText("Difficulty: " + (mission != null ? mission.getDifficulty() : "?"));
+        missionDescriptionLabel.setText(mission != null ? mission.getDescription() : "");
     }
 
     private void updateCurrentPlayerLabel() {
@@ -236,6 +397,7 @@ public class GameController {
         } else {
             showTrickPhase();
         }
+        updateCommunicationUI();
     }
 
     private void showTaskPhase() {
@@ -262,17 +424,21 @@ public class GameController {
         if (session.getEngine().getPhase() != GamePhase.MISSION_COMPLETE) {
             return;
         }
-        MissionStatus status = session.getEngine().getCurrentMission().getStatus();
-        if (status == MissionStatus.SUCCESS) {
+        boolean success = session.getEngine().getCurrentMission().getStatus() == MissionStatus.SUCCESS;
+        if (success) {
             resultTitleLabel.setText("Mission Complete!");
             resultMessageLabel.setText("All tasks were completed.");
             nextMissionButton.setVisible(true);
             nextMissionButton.setManaged(true);
+            retryButton.setVisible(false);
+            retryButton.setManaged(false);
         } else {
             resultTitleLabel.setText("Mission Failed");
             resultMessageLabel.setText("Not all tasks were completed.");
             nextMissionButton.setVisible(false);
             nextMissionButton.setManaged(false);
+            retryButton.setVisible(true);
+            retryButton.setManaged(true);
         }
         missionResultOverlay.setVisible(true);
         missionResultOverlay.setManaged(true);
@@ -283,11 +449,13 @@ public class GameController {
         missionResultOverlay.setManaged(false);
         clearTrickSlots();
         renderAllHands();
+        updateInfoLabels();
         renderTasks();
         updateTaskUI();
         updateMissionLabels();
         updateCurrentPlayerLabel();
         updatePhasePanels();
+        updateCommunicationUI();
     }
 
     private int playerIndexFromTurn() {

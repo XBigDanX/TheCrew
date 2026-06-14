@@ -8,16 +8,19 @@ public class PlayerUI {
     private final FlowPane hand;
     private final Pane slot;
     private final HBox taskHand;
+    private final Pane communicationArea;
 
-    public PlayerUI(FlowPane hand, Pane slot, HBox taskHand) {
+    public PlayerUI(FlowPane hand, Pane slot, HBox taskHand, Pane communicationArea) {
         this.hand = hand;
         this.slot = slot;
         this.taskHand = taskHand;
+        this.communicationArea = communicationArea;
     }
 
     public FlowPane getHand() { return hand; }
     public Pane getSlot() { return slot; }
     public HBox getTaskHand() { return taskHand; }
+    public Pane getCommunicationArea() { return communicationArea; }
 
     public void setVisible(boolean visible) {
         if (hand != null) {
@@ -31,6 +34,10 @@ public class PlayerUI {
         if (taskHand != null) {
             taskHand.setVisible(visible);
             taskHand.setManaged(visible);
+        }
+        if (communicationArea != null) {
+            communicationArea.setVisible(visible);
+            communicationArea.setManaged(visible);
         }
     }
 }

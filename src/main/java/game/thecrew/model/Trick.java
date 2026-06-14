@@ -53,4 +53,13 @@ public class Trick {
 
         return winnerIndex;
     }
+
+    public TrickPlay getPlayerPlay(int playerIndex) {
+        for (TrickPlay play : plays) {
+            if (play.getPlayerIndex() == playerIndex) {
+                return play;
+            }
+        }
+        return null;
+    }
 }

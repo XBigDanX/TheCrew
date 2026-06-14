@@ -7,7 +7,7 @@ public class Player {
 
     private final String name;
     private final List<Card> hand;
-    private final List<ActiveMissionTask> taskHand = new ArrayList<>();
+    private final List<Task> taskHand = new ArrayList<>();
 
     public Player(String name) {
         this.name = name;
@@ -31,11 +31,11 @@ public class Player {
         hand.remove(card);
     }
 
-    public void addTask(ActiveMissionTask task) {
+    public void addTask(Task task) {
         taskHand.add(task);
     }
 
-    public List<ActiveMissionTask> getTaskHand() {
+    public List<Task> getTaskHand() {
         return taskHand;
     }
 

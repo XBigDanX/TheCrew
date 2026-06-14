@@ -1,7 +1,6 @@
 package game.thecrew.engine;
 
-import game.thecrew.mission.MissionFactory;
-import game.thecrew.mission.TaskLibrary;
+import game.thecrew.mission.MissionLibrary;
 import game.thecrew.model.*;
 
 import java.util.ArrayList;
@@ -24,7 +23,9 @@ public class CrewEngine {
     private final CardManager cardManager = new CardManager();
     private TaskSelectionManager taskManager;
     private final TrickManager trickManager = new TrickManager();
-    private final MissionFactory missionFactory = new MissionFactory(TaskLibrary.getAllTasks());
+    private CommunicationToken[] pendingTokens;
+    private int communicationPlayerIndex = -1;
+    private boolean[] communicationRequested;
 
     // =========================
     // SETUP
@@ -35,6 +36,8 @@ public class CrewEngine {
         for (int i = 0; i < playerCount; i++) {
             players.add(new Player("Player " + (i + 1)));
         }
+        pendingTokens = new CommunicationToken[playerCount];
+        communicationRequested = new boolean[playerCount];
     }
 
     // =========================
@@ -43,10 +46,13 @@ public class CrewEngine {
 
     public void startGame() {
         missions.clear();
-        missions.add(missionFactory.createMission(1, 1, players.size()));
-        missions.add(missionFactory.createMission(2, 2, players.size()));
-        missions.add(missionFactory.createMission(3, 3, players.size()));
+        int pc = players.size();
         captainIndex = cardManager.determineCaptain(players);
+        for (int id = 1; id <= 32; id++) {
+            Mission m = MissionLibrary.forPlayerCount(id, pc);
+            m.setCaptainIndex(captainIndex);
+            missions.add(m);
+        }
         cardsPlayedInMission = 0;
         startTaskSelectionPhase();
     }
@@ -68,7 +74,7 @@ public class CrewEngine {
     // TASK SELECTION
     // =========================
 
-    public boolean selectTask(int playerIndex, ActiveMissionTask task) {
+    public boolean selectTask(int playerIndex, Task task) {
         if (phase != GamePhase.TASK_SELECTION || taskManager == null) {
             return false;
         }
@@ -108,9 +114,17 @@ public class CrewEngine {
     // =========================
 
     private void startTrickPhase() {
-
+        // Check if any player queued a communication request during task selection
+        for (int i = 0; i < communicationRequested.length; i++) {
+            if (communicationRequested[i]) {
+                this.phase = GamePhase.COMMUNICATION;
+                this.communicationPlayerIndex = i;
+                return;
+            }
+        }
         phase = GamePhase.TRICKING;
         currentPlayerIndex = captainIndex;
+        applyPendingTokens();
         trickManager.reset();
     }
 
@@ -145,14 +159,34 @@ public class CrewEngine {
             Trick completed = trickManager.getCurrentTrick();
             getCurrentMission().addCompletedTrick(completed);
 
+            // CASE A — Early win: all tasks completed before all cards played
+            if (allTasksCompleted()) {
+                evaluateMissionEnd();
+                phase = GamePhase.MISSION_COMPLETE;
+                trickManager.reset();
+                return true;
+            }
+
             currentPlayerIndex = trickManager.getWinner();
 
+            applyPendingTokens();
             trickManager.reset();
 
-            // After trick is fully processed, check if the mission is over
+            // CASE B — Full completion fallback when all cards are exhausted
             if (cardsPlayedInMission >= getExpectedCardsToBePlayed()) {
                 evaluateMissionEnd();
                 phase = GamePhase.MISSION_COMPLETE;
+            }
+
+            // After trick completes, check for queued communication requests
+            if (phase == GamePhase.TRICKING) {
+                for (int i = 0; i < communicationRequested.length; i++) {
+                    if (communicationRequested[i]) {
+                        phase = GamePhase.COMMUNICATION;
+                        communicationPlayerIndex = i;
+                        break;
+                    }
+                }
             }
 
         } else {
@@ -168,8 +202,20 @@ public class CrewEngine {
 
     private int getExpectedCardsToBePlayed() {
         int count = players.size();
+        if (count == 2) return 40;
         if (count == 3) return 39;
         return 40;
+    }
+
+    private boolean allTasksCompleted() {
+        Mission mission = getCurrentMission();
+        if (mission == null) return false;
+        for (Task task : mission.getTasks()) {
+            if (!task.isCompleted()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // =========================
@@ -191,9 +237,11 @@ public class CrewEngine {
 
     public void restartCurrentMission() {
         Mission current = getCurrentMission();
-        Mission fresh = missionFactory.createMission(current.getId(), current.getDifficulty(), players.size());
+        Mission fresh = MissionLibrary.forPlayerCount(current.getId(), players.size());
+        fresh.setCaptainIndex(captainIndex);
         missions.set(currentMissionIndex, fresh);
         cardsPlayedInMission = 0;
+        pendingTokens = new CommunicationToken[players.size()];
         clearAndRedeal();
         captainIndex = cardManager.determineCaptain(players);
         startTaskSelectionPhase();
@@ -213,13 +261,11 @@ public class CrewEngine {
 
     private void evaluateMissionEnd() {
         Mission mission = getCurrentMission();
-        // Evaluate non-trick-based tasks that trigger at mission end
-        for (ActiveMissionTask task : mission.getTasks()) {
+        for (Task task : mission.getTasks()) {
             task.checkMissionEnd(mission);
         }
-        // All tasks must be completed for success
         boolean allCompleted = true;
-        for (ActiveMissionTask task : mission.getTasks()) {
+        for (Task task : mission.getTasks()) {
             if (!task.isCompleted()) {
                 allCompleted = false;
                 break;
@@ -229,8 +275,163 @@ public class CrewEngine {
     }
 
     // =========================
+    // COMMUNICATION LOGIC
+    // =========================
+
+    public void requestCommunication(int playerIndex) {
+        // Cancel active communication selection
+        if (phase == GamePhase.COMMUNICATION && communicationPlayerIndex == playerIndex) {
+            phase = GamePhase.TRICKING;
+            communicationPlayerIndex = -1;
+            communicationRequested[playerIndex] = false;
+            return;
+        }
+
+        if (phase != GamePhase.TRICKING) return;
+        if (getCurrentMission().hasPlayerUsedToken(playerIndex)) return;
+
+        boolean trickHasPlays = !trickManager.getCurrentTrick().getPlays().isEmpty();
+        if (!trickHasPlays) {
+            phase = GamePhase.COMMUNICATION;
+            communicationPlayerIndex = playerIndex;
+        } else {
+            communicationRequested[playerIndex] = !communicationRequested[playerIndex];
+        }
+    }
+
+    public int getCommunicationPlayerIndex() {
+        return communicationPlayerIndex;
+    }
+
+    public boolean isCommunicationRequested(int playerIndex) {
+        return communicationRequested[playerIndex];
+    }
+
+    public List<Card> getValidCommunicationCards(int playerIndex) {
+        if (getCurrentMission().hasPlayerUsedToken(playerIndex)) {
+            return new ArrayList<>();
+        }
+        // A player can only initiate communication if they haven't played their card in the current trick
+        if (trickManager.getCurrentTrick().getPlayerPlay(playerIndex) != null) {
+            return new ArrayList<>();
+        }
+
+        List<Card> hand = players.get(playerIndex).getHand();
+        List<Card> validCards = new ArrayList<>();
+
+        for (Card card : hand) {
+            if (card.isTrump()) continue;
+
+            List<Card> sameColorCards = new ArrayList<>();
+            for (Card c : hand) {
+                if (c.getColor() == card.getColor()) {
+                    sameColorCards.add(c);
+                }
+            }
+
+            if (sameColorCards.size() == 1) {
+                validCards.add(card);
+            } else {
+                int min = Integer.MAX_VALUE;
+                int max = Integer.MIN_VALUE;
+                for (Card c : sameColorCards) {
+                    if (c.getValue() < min) min = c.getValue();
+                    if (c.getValue() > max) max = c.getValue();
+                }
+                if (card.getValue() == min || card.getValue() == max) {
+                    validCards.add(card);
+                }
+            }
+        }
+        return validCards;
+    }
+
+    public List<TokenPosition> getValidPositionsForCard(int playerIndex, Card card) {
+        List<TokenPosition> positions = new ArrayList<>();
+        List<Card> hand = players.get(playerIndex).getHand();
+        List<Card> sameColorCards = new ArrayList<>();
+        for (Card c : hand) {
+            if (c.getColor() == card.getColor()) {
+                sameColorCards.add(c);
+            }
+        }
+
+        if (sameColorCards.size() == 1) {
+            positions.add(TokenPosition.MIDDLE);
+        } else {
+            int min = Integer.MAX_VALUE;
+            int max = Integer.MIN_VALUE;
+            for (Card c : sameColorCards) {
+                if (c.getValue() < min) min = c.getValue();
+                if (c.getValue() > max) max = c.getValue();
+            }
+            if (card.getValue() == min) positions.add(TokenPosition.BOTTOM);
+            if (card.getValue() == max) positions.add(TokenPosition.TOP);
+        }
+        return positions;
+    }
+
+    public TokenPosition resolveCommunicationPosition(int playerIndex, Card card) {
+        List<TokenPosition> positions = getValidPositionsForCard(playerIndex, card);
+        if (positions.isEmpty()) return null;
+        // MIDDLE if only card of that color; TOP if highest; BOTTOM if lowest
+        if (positions.contains(TokenPosition.MIDDLE)) return TokenPosition.MIDDLE;
+        return positions.get(0);
+    }
+
+    public boolean selectCommunicationCard(int playerIndex, Card card, TokenPosition position) {
+        if (phase != GamePhase.COMMUNICATION) {
+            return false;
+        }
+        if (playerIndex != communicationPlayerIndex) {
+            return false;
+        }
+        if (getCurrentMission().hasPlayerUsedToken(playerIndex)) {
+            return false;
+        }
+        if (trickManager.getCurrentTrick().getPlayerPlay(playerIndex) != null) {
+            return false;
+        }
+        // Validation of card and position
+        List<Card> validCards = getValidCommunicationCards(playerIndex);
+        if (!validCards.contains(card)) {
+            return false;
+        }
+        List<TokenPosition> validPositions = getValidPositionsForCard(playerIndex, card);
+        if (!validPositions.contains(position)) {
+            return false;
+        }
+
+        pendingTokens[playerIndex] = new CommunicationToken(card, position, playerIndex);
+        getCurrentMission().setPlayerUsedToken(playerIndex, true);
+
+        communicationRequested[playerIndex] = false;
+        communicationPlayerIndex = -1;
+        phase = GamePhase.TRICKING;
+        return true;
+    }
+
+    public void applyPendingTokens() {
+        if (pendingTokens == null) return;
+        for (int i = 0; i < pendingTokens.length; i++) {
+            if (pendingTokens[i] != null) {
+                getCurrentMission().addActiveToken(pendingTokens[i]);
+                pendingTokens[i] = null;
+            }
+        }
+    }
+
+    public CommunicationToken[] getPendingTokens() {
+        return pendingTokens;
+    }
+
+    // =========================
     // STATE ACCESSORS & HELPERS
     // =========================
+
+    public void removeActiveToken(int playerIndex) {
+        getCurrentMission().removeActiveToken(playerIndex);
+    }
 
     private void nextPlayer() {
         currentPlayerIndex = (currentPlayerIndex + 1) % players.size();

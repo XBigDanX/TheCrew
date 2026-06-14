@@ -11,6 +11,11 @@ public class PlayerCountController {
     private VBox root;
 
     @FXML
+    private void onTwoPlayers() {
+        navigateToGameBoard(2);
+    }
+
+    @FXML
     private void onThreePlayers() {
         navigateToGameBoard(3);
     }

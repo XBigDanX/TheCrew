@@ -7,14 +7,26 @@ public class Mission {
 
     private final int id;
     private final int difficulty;
-    private final List<ActiveMissionTask> tasks;
+    private final String description;
+    private final List<Task> tasks;
+    private final int playerCount;
+    private int captainIndex;
     private final List<Trick> completedTricks = new ArrayList<>();
+    private final boolean[] communicationTokenUsed;
+    private final List<CommunicationToken> activeTokens = new ArrayList<>();
     private MissionStatus status = MissionStatus.IN_PROGRESS;
 
-    public Mission(int id, int difficulty, List<ActiveMissionTask> tasks) {
+    public Mission(int id, int difficulty, List<Task> tasks, int numPlayers) {
+        this(id, difficulty, "", tasks, numPlayers);
+    }
+
+    public Mission(int id, int difficulty, String description, List<Task> tasks, int playerCount) {
         this.id = id;
         this.difficulty = difficulty;
+        this.description = description;
         this.tasks = tasks;
+        this.playerCount = playerCount;
+        this.communicationTokenUsed = new boolean[playerCount];
     }
 
     public MissionStatus getStatus() {
@@ -33,8 +45,24 @@ public class Mission {
         return difficulty;
     }
 
-    public List<ActiveMissionTask> getTasks() {
+    public String getDescription() {
+        return description;
+    }
+
+    public List<Task> getTasks() {
         return tasks;
+    }
+
+    public int getPlayerCount() {
+        return playerCount;
+    }
+
+    public int getCaptainIndex() {
+        return captainIndex;
+    }
+
+    public void setCaptainIndex(int captainIndex) {
+        this.captainIndex = captainIndex;
     }
 
     public List<Trick> getCompletedTricks() {
@@ -44,7 +72,7 @@ public class Mission {
     public void addCompletedTrick(Trick trick) {
         completedTricks.add(trick);
         int winner = trick.getWinnerIndex(trick.getLeadSuit());
-        for (ActiveMissionTask task : tasks) {
+        for (Task task : tasks) {
             task.checkTrick(this, trick, winner);
         }
     }
@@ -66,5 +94,37 @@ public class Mission {
             }
         }
         return count;
+    }
+
+    public List<Card> getCardsWonByPlayer(int playerIndex) {
+        List<Card> cards = new ArrayList<>();
+        for (Trick trick : completedTricks) {
+            if (trick.getWinnerIndex(trick.getLeadSuit()) == playerIndex) {
+                for (TrickPlay play : trick.getPlays()) {
+                    cards.add(play.getCard());
+                }
+            }
+        }
+        return cards;
+    }
+
+    public boolean hasPlayerUsedToken(int playerIndex) {
+        return communicationTokenUsed[playerIndex];
+    }
+
+    public void setPlayerUsedToken(int playerIndex, boolean used) {
+        communicationTokenUsed[playerIndex] = used;
+    }
+
+    public List<CommunicationToken> getActiveTokens() {
+        return activeTokens;
+    }
+
+    public void addActiveToken(CommunicationToken token) {
+        activeTokens.add(token);
+    }
+
+    public void removeActiveToken(int playerIndex) {
+        activeTokens.removeIf(token -> token.getPlayerIndex() == playerIndex);
     }
 }

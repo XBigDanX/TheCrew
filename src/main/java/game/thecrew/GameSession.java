@@ -12,8 +12,8 @@ public class GameSession {
     private final CrewEngine engine;
 
     public GameSession(int playerCount) {
-        if (playerCount < 3 || playerCount > 5) {
-            throw new IllegalArgumentException("Player count must be between 3 and 5, got: " + playerCount);
+        if (playerCount < 2 || playerCount > 5) {
+            throw new IllegalArgumentException("Player count must be between 2 and 5, got: " + playerCount);
         }
         this.playerCount = playerCount;
         this.engine = new CrewEngine();

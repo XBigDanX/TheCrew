@@ -1,7 +1,9 @@
 package game.thecrew.controllers;
 
+import game.thecrew.utils.DocumentationUtils;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 
 public class HomeScreenController {
@@ -17,5 +19,15 @@ public class HomeScreenController {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @FXML
+    private void onGenerateDocumentation() {
+        DocumentationUtils.generateDocumentation();
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Documentation Generated");
+        alert.setHeaderText(null);
+        alert.setContentText("Documentation has been generated in documentation/missions.html");
+        alert.showAndWait();
     }
 }
