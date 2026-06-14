@@ -27,7 +27,7 @@ public class HomeScreenController {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Documentation Generated");
         alert.setHeaderText(null);
-        alert.setContentText("Documentation has been generated in documentation/missions.html");
+        alert.setContentText("Documentation has been generated in documentation/docs.html");
         alert.showAndWait();
     }
 }
