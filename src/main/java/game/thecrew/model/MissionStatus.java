@@ -1,6 +1,8 @@
 package game.thecrew.model;
 
-public enum MissionStatus {
+import java.io.Serializable;
+
+public enum MissionStatus implements Serializable {
     IN_PROGRESS,
     SUCCESS,
     FAILED

@@ -29,6 +29,9 @@
     <!-- top-bar Communicate button is hidden for now; will be used in per-window view -->
     <Button fx:id="communicateButton" layoutX="800.0" layoutY="13.0" managed="false" prefWidth="120.0" text="Communicate" visible="false" />
 
+    <Button fx:id="saveButton" layoutX="1200.0" layoutY="13.0" prefWidth="80.0" text="Save" />
+    <Button fx:id="loadButton" layoutX="1290.0" layoutY="13.0" prefWidth="80.0" text="Load" />
+
   </Pane>
 
   <FlowPane fx:id="hand0" hgap="10" layoutX="43.0" layoutY="588.0" prefHeight="187.0" prefWidth="994.0" style="-fx-background-color: black;" vgap="10" />

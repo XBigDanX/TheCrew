@@ -1,6 +1,8 @@
 package game.thecrew.model;
 
-public class Task {
+import java.io.Serializable;
+
+public class Task implements Serializable {
 
     private final String description;
     private final TaskRule rule;

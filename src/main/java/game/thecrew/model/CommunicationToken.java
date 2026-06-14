@@ -1,6 +1,8 @@
 package game.thecrew.model;
 
-public class CommunicationToken {
+import java.io.Serializable;
+
+public class CommunicationToken implements Serializable {
     private final Card card;
     private final TokenPosition position;
     private final int playerIndex;

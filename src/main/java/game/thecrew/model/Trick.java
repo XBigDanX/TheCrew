@@ -1,9 +1,10 @@
 package game.thecrew.model;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Trick {
+public class Trick implements Serializable {
 
     private final List<TrickPlay> plays = new ArrayList<>();
 

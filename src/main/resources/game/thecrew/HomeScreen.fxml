@@ -2,11 +2,17 @@
 
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.VBox?>
 
 <VBox alignment="CENTER" prefHeight="800.0" prefWidth="1500.0" spacing="30" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="game.thecrew.controllers.HomeScreenController">
 
    <Label text="The Crew" style="-fx-font-size: 48; -fx-font-weight: bold;" />
+
+   <TextField fx:id="ipAddressField" promptText="Host IP Address" style="-fx-font-size: 14;" maxWidth="300" />
+
+   <Button fx:id="hostButton" text="Host Game" style="-fx-font-size: 18;" onAction="#onHostGame" />
+   <Button fx:id="joinButton" text="Join Game" style="-fx-font-size: 18;" onAction="#onJoinGame" />
 
    <Button fx:id="playButton" text="Play Game" style="-fx-font-size: 18;" onAction="#onPlayGame" />
    <Button text="Generate Documentation" style="-fx-font-size: 14;" onAction="#onGenerateDocumentation" />

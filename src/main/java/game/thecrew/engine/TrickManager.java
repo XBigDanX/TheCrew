@@ -41,6 +41,10 @@ public class TrickManager {
         currentTrick = new Trick();
     }
 
+    public void setCurrentTrick(Trick trick) {
+        this.currentTrick = trick;
+    }
+
     // =========================
     // VALIDATION
     // =========================

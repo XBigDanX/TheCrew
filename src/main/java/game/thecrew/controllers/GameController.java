@@ -1,7 +1,10 @@
 package game.thecrew.controllers;
 
 import game.thecrew.GameSession;
+import game.thecrew.utils.FileUtils;
 import javafx.animation.PauseTransition;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.util.Duration;
 import game.thecrew.model.*;
 import game.thecrew.ui.CardView;
@@ -10,6 +13,7 @@ import game.thecrew.ui.TaskView;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -25,6 +29,8 @@ public class GameController {
     @FXML private Label currentPlayerLabel;
     @FXML private Button passTaskSelectionButton;
     @FXML private Button communicateButton; // reserved for per-window view
+    @FXML private Button saveButton;
+    @FXML private Button loadButton;
 
     @FXML private Pane taskPane;
     @FXML private HBox availableTasksBox;
@@ -73,16 +79,40 @@ public class GameController {
         renderAllHands();
         renderTasks();
 
-        passTaskSelectionButton.setOnAction(e -> onPassClicked());
+        passTaskSelectionButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent e) {
+                onPassClicked();
+            }
+        });
         initCommButtons();
 
-        nextMissionButton.setOnAction(e -> {
-            session.getEngine().advanceToNextMission();
-            refreshAfterMissionTransition();
+        nextMissionButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent e) {
+                session.getEngine().advanceToNextMission();
+                refreshAfterMissionTransition();
+            }
         });
-        retryButton.setOnAction(e -> {
-            session.getEngine().restartCurrentMission();
-            refreshAfterMissionTransition();
+        retryButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent e) {
+                session.getEngine().restartCurrentMission();
+                refreshAfterMissionTransition();
+            }
+        });
+
+        saveButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent e) {
+                onSaveClicked();
+            }
+        });
+        loadButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent e) {
+                onLoadClicked();
+            }
         });
 
         updateMissionLabels();
@@ -108,35 +138,45 @@ public class GameController {
     private void initCommButtons() {
         commActionButtons = new Button[playerUIs.size()];
         for (int i = 0; i < playerUIs.size(); i++) {
-            Button btn = new Button();
-            btn.setMinSize(30, 30);
-            btn.setMaxSize(30, 30);
-            btn.setShape(new javafx.scene.shape.Circle(15));
-            btn.setStyle("-fx-background-color: green; -fx-cursor: hand;");
-            btn.setManaged(false);
-            btn.setVisible(false);
-            int idx = i;
-            btn.setOnAction(e -> onCommunicateClicked(idx));
-            StackPane.setAlignment(btn, javafx.geometry.Pos.CENTER);
-            playerUIs.get(i).getCommunicationArea().getChildren().add(btn);
-            commActionButtons[i] = btn;
+            Button communicationButton = new Button();
+            communicationButton.setMinSize(30, 30);
+            communicationButton.setMaxSize(30, 30);
+            communicationButton.setShape(new javafx.scene.shape.Circle(15));
+            communicationButton.setStyle("-fx-background-color: green; -fx-cursor: hand;");
+            communicationButton.setManaged(false);
+            communicationButton.setVisible(false);
+            final int index = i;
+            communicationButton.setOnAction(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent e) {
+                    onCommunicateClicked(index);
+                }
+            });
+            StackPane.setAlignment(communicationButton, javafx.geometry.Pos.CENTER);
+            playerUIs.get(i).getCommunicationArea().getChildren().add(communicationButton);
+            commActionButtons[i] = communicationButton;
         }
     }
 
     private void setupPlayerViews() {
         for (int i = 0; i < playerUIs.size(); i++) {
-            playerUIs.get(i).setVisible(i < playerCount);
-            infoLabels[i].setVisible(i < playerCount && i < 2);
+            boolean active = i < playerCount;
+            playerUIs.get(i).setVisible(active);
+            if (i < infoLabels.length && infoLabels[i] != null) {
+                infoLabels[i].setVisible(active);
+            }
         }
     }
 
     private void updateInfoLabels() {
         Mission mission = session.getEngine().getCurrentMission();
-        for (int i = 0; i < playerCount && i < 2; i++) {
+        for (int i = 0; i < playerCount; i++) {
             int tricks = mission.getPlayerWinCount(i);
-            int cards = session.getEngine().getPlayers().get(i).getHand().size();
+            int cards = session.getEngine().getPlayerManager().getPlayers().get(i).getHand().size();
             String captain = i == mission.getCaptainIndex() ? "  [Captain]" : "";
-            infoLabels[i].setText("Tricks: " + tricks + "  Cards: " + cards + captain);
+            if (i < infoLabels.length && infoLabels[i] != null) {
+                infoLabels[i].setText("Tricks: " + tricks + "  Cards: " + cards + captain);
+            }
         }
     }
 
@@ -151,23 +191,35 @@ public class GameController {
     }
 
     private void renderPlayerHand(int playerIndex) {
-        Player player = session.getEngine().getPlayers().get(playerIndex);
+        Player player = session.getEngine().getPlayerManager().getPlayers().get(playerIndex);
         FlowPane handPane = playerUIs.get(playerIndex).getHand();
         handPane.getChildren().clear();
 
-        int commPlayerIdx = session.getEngine().getCommunicationPlayerIndex();
-        List<Card> validCommCards = (commPlayerIdx == playerIndex)
-                ? session.getEngine().getValidCommunicationCards(playerIndex)
+        int communicatingPlayerIndex = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
+        List<Card> validCommCards = (communicatingPlayerIndex == playerIndex)
+                ? session.getEngine().getCommunicationManager().getValidCommunicationCards(playerIndex, session.getEngine().getCurrentMission())
                 : null;
 
         for (Card card : player.getHand()) {
             CardView cardView = new CardView(card);
 
             if (validCommCards != null && validCommCards.contains(card)) {
+                final Card clickedCard = card;
                 cardView.setStyle("-fx-border-color: yellow; -fx-border-width: 2;");
-                cardView.setOnMouseClicked(e -> onCommunicationCardSelected(playerIndex, card));
-            } else if (commPlayerIdx == -1) {
-                cardView.setOnMouseClicked(e -> onCardClicked(playerIndex, card));
+                cardView.setOnMouseClicked(new EventHandler<MouseEvent>() {
+                    @Override
+                    public void handle(MouseEvent e) {
+                        onCommunicationCardSelected(playerIndex, clickedCard);
+                    }
+                });
+            } else if (communicatingPlayerIndex == -1) {
+                final Card clickedCard = card;
+                cardView.setOnMouseClicked(new EventHandler<MouseEvent>() {
+                    @Override
+                    public void handle(MouseEvent e) {
+                        onCardClicked(playerIndex, clickedCard);
+                    }
+                });
             }
 
             handPane.getChildren().add(cardView);
@@ -185,9 +237,13 @@ public class GameController {
         for (Task activeTask : mission.getTasks()) {
             if (activeTask.getAssignedPlayer() == null) {
                 TaskView taskView = new TaskView(activeTask);
-                taskView.setOnMouseClicked(e ->
-                        onTaskClicked(playerIndexFromTurn(), activeTask)
-                );
+                final Task clickedTask = activeTask;
+                taskView.setOnMouseClicked(new EventHandler<MouseEvent>() {
+                    @Override
+                    public void handle(MouseEvent e) {
+                        onTaskClicked(playerIndexFromTurn(), clickedTask);
+                    }
+                });
                 availableTasksBox.getChildren().add(taskView);
             }
         }
@@ -198,7 +254,7 @@ public class GameController {
     // =========================
 
     private void onPassClicked() {
-        int playerIndex = session.getEngine().getCurrentPlayerIndex();
+        int playerIndex = session.getEngine().getPlayerManager().getCurrentPlayerIndex();
         if (!session.getEngine().passTaskSelection(playerIndex)) {
             return;
         }
@@ -231,15 +287,18 @@ public class GameController {
 
         // If trick was completed, clear it after a short delay
         if (session.getEngine().getTrickManager().getCurrentTrick().getPlays().isEmpty()) {
-            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(1));
-            pause.setOnFinished(e -> {
-                clearTrickSlots();
-                renderAllHands();
-                updateInfoLabels();
-                updateCommunicationUI();
-                handleMissionEnd();
+            javafx.animation.PauseTransition pauseTransition = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(1));
+            pauseTransition.setOnFinished(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent e) {
+                    clearTrickSlots();
+                    renderAllHands();
+                    updateInfoLabels();
+                    updateCommunicationUI();
+                    handleMissionEnd();
+                }
             });
-            pause.play();
+            pauseTransition.play();
         }
 
         // update task completion in UI
@@ -257,10 +316,10 @@ public class GameController {
     }
 
     private void onCommunicationCardSelected(int playerIndex, Card card) {
-        TokenPosition pos = session.getEngine().resolveCommunicationPosition(playerIndex, card);
-        if (pos == null) return;
+        TokenPosition position = session.getEngine().getCommunicationManager().resolveCommunicationPosition(playerIndex, card);
+        if (position == null) return;
 
-        if (session.getEngine().selectCommunicationCard(playerIndex, card, pos)) {
+        if (session.getEngine().selectCommunicationCard(playerIndex, card, position)) {
             renderAllHands();
             updateCommunicationUI();
             updatePhasePanels();
@@ -276,12 +335,15 @@ public class GameController {
             session.getEngine().applyPendingTokens();
             updateCommunicationUI();
 
-            PauseTransition pause = new PauseTransition(Duration.seconds(5));
-            pause.setOnFinished(e -> {
-                session.getEngine().removeActiveToken(playerIndex);
-                updateCommunicationUI();
+            PauseTransition pauseTransition = new PauseTransition(Duration.seconds(5));
+            pauseTransition.setOnFinished(new EventHandler<ActionEvent>() {
+                @Override
+                public void handle(ActionEvent e) {
+                    session.getEngine().removeActiveToken(playerIndex);
+                    updateCommunicationUI();
+                }
             });
-            pause.play();
+            pauseTransition.play();
         }
     }
 
@@ -292,44 +354,44 @@ public class GameController {
         boolean phaseIsComm = session.getEngine().getPhase() == GamePhase.COMMUNICATION;
         boolean phaseIsTricking = session.getEngine().getPhase() == GamePhase.TRICKING;
         boolean showButtons = phaseIsComm || phaseIsTricking;
-        int commPlayerIdx = session.getEngine().getCommunicationPlayerIndex();
+        int communicatingPlayerIndex = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
 
         for (int i = 0; i < playerCount; i++) {
             Pane commArea = playerUIs.get(i).getCommunicationArea();
             commArea.getChildren().clear();
 
-            Button btn = commActionButtons[i];
-            commArea.getChildren().add(btn);
+            Button communicationButton = commActionButtons[i];
+            commArea.getChildren().add(communicationButton);
 
-            btn.setManaged(showButtons);
-            btn.setVisible(showButtons);
+            communicationButton.setManaged(showButtons);
+            communicationButton.setVisible(showButtons);
             if (showButtons) {
                 boolean alreadyUsed = mission.hasPlayerUsedToken(i);
                 if (alreadyUsed) {
-                    btn.setStyle("-fx-background-color: red; -fx-cursor: default;");
-                    btn.setDisable(true);
+                    communicationButton.setStyle("-fx-background-color: red; -fx-cursor: default;");
+                    communicationButton.setDisable(true);
                 } else if (phaseIsComm) {
-                    if (commPlayerIdx == i) {
-                        btn.setStyle("-fx-background-color: red; -fx-cursor: hand;");
-                        btn.setDisable(false);
-                    } else if (commPlayerIdx == -1) {
-                        boolean canComm = !alreadyUsed &&
-                                          !session.getEngine().getValidCommunicationCards(i).isEmpty();
-                        btn.setStyle(canComm
+                    if (communicatingPlayerIndex == i) {
+                        communicationButton.setStyle("-fx-background-color: red; -fx-cursor: hand;");
+                        communicationButton.setDisable(false);
+                    } else if (communicatingPlayerIndex == -1) {
+                        boolean canCommunicate = !alreadyUsed &&
+                                          !session.getEngine().getCommunicationManager().getValidCommunicationCards(i, mission).isEmpty();
+                        communicationButton.setStyle(canCommunicate
                             ? "-fx-background-color: green; -fx-cursor: hand;"
                             : "-fx-background-color: grey; -fx-cursor: default;");
-                        btn.setDisable(!canComm);
+                        communicationButton.setDisable(!canCommunicate);
                     } else {
-                        btn.setDisable(true);
+                        communicationButton.setDisable(true);
                     }
                 } else {
                     // TRICKING phase — show queue state
-                    if (session.getEngine().isCommunicationRequested(i)) {
-                        btn.setStyle("-fx-background-color: orange; -fx-cursor: hand;");
-                        btn.setDisable(false);
+                    if (session.getEngine().getCommunicationManager().isCommunicationRequested(i)) {
+                        communicationButton.setStyle("-fx-background-color: orange; -fx-cursor: hand;");
+                        communicationButton.setDisable(false);
                     } else {
-                        btn.setStyle("-fx-background-color: green; -fx-cursor: hand;");
-                        btn.setDisable(false);
+                        communicationButton.setStyle("-fx-background-color: green; -fx-cursor: hand;");
+                        communicationButton.setDisable(false);
                     }
                 }
             }
@@ -355,8 +417,8 @@ public class GameController {
     }
 
     private void clearTrickSlots() {
-        for (PlayerUI ui : playerUIs) {
-            ui.getSlot().getChildren().clear();
+        for (PlayerUI playerUI : playerUIs) {
+            playerUI.getSlot().getChildren().clear();
         }
     }
 
@@ -365,7 +427,7 @@ public class GameController {
             HBox taskHand = playerUIs.get(i).getTaskHand();
             taskHand.getChildren().clear();
 
-            Player player = session.getEngine().getPlayers().get(i);
+            Player player = session.getEngine().getPlayerManager().getPlayers().get(i);
             for (Task activeTask : player.getTaskHand()) {
                 TaskView taskView = new TaskView(activeTask);
                 taskView.setCompleted(activeTask.isCompleted());
@@ -387,7 +449,7 @@ public class GameController {
 
     private void updateCurrentPlayerLabel() {
         currentPlayerLabel.setText(
-                "Current Turn: Player " + (session.getEngine().getCurrentPlayerIndex()+1)
+            "Current Turn: Player " + (session.getEngine().getPlayerManager().getCurrentPlayerIndex()+1)
         );
     }
 
@@ -444,11 +506,25 @@ public class GameController {
         missionResultOverlay.setManaged(true);
     }
 
+    private void onSaveClicked() {
+        GameState state = session.getEngine().saveState();
+        FileUtils.save(state);
+    }
+
+    private void onLoadClicked() {
+        GameState state = FileUtils.load();
+        if (state != null) {
+            session.getEngine().restoreState(state);
+            refreshAfterMissionTransition();
+        }
+    }
+
     private void refreshAfterMissionTransition() {
         missionResultOverlay.setVisible(false);
         missionResultOverlay.setManaged(false);
         clearTrickSlots();
         renderAllHands();
+        renderCurrentTrick();
         updateInfoLabels();
         renderTasks();
         updateTaskUI();
@@ -458,7 +534,20 @@ public class GameController {
         updateCommunicationUI();
     }
 
+    private void renderCurrentTrick() {
+        Trick currentTrick = session.getEngine().getTrickManager().getCurrentTrick();
+        if (currentTrick == null) return;
+        for (TrickPlay trickPlay : currentTrick.getPlays()) {
+            int playerIndex = trickPlay.getPlayerIndex();
+            if (playerIndex >= 0 && playerIndex < playerUIs.size()) {
+                Pane slot = playerUIs.get(playerIndex).getSlot();
+                slot.getChildren().clear();
+                slot.getChildren().add(new CardView(trickPlay.getCard()));
+            }
+        }
+    }
+
     private int playerIndexFromTurn() {
-        return session.getEngine().getCurrentPlayerIndex();
+        return session.getEngine().getPlayerManager().getCurrentPlayerIndex();
     }
 }

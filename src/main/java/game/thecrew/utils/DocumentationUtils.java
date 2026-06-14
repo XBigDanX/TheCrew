@@ -71,10 +71,8 @@ public class DocumentationUtils {
                     html.toString()
             );
 
-            System.out.println("Documentation generated.");
-
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to generate documentation", e);
         }
     }
 }

@@ -1,9 +1,11 @@
 package game.thecrew.model;
 
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
-public class Mission {
+public class Mission implements Serializable {
 
     private final int id;
     private final int difficulty;
@@ -15,10 +17,6 @@ public class Mission {
     private final boolean[] communicationTokenUsed;
     private final List<CommunicationToken> activeTokens = new ArrayList<>();
     private MissionStatus status = MissionStatus.IN_PROGRESS;
-
-    public Mission(int id, int difficulty, List<Task> tasks, int numPlayers) {
-        this(id, difficulty, "", tasks, numPlayers);
-    }
 
     public Mission(int id, int difficulty, String description, List<Task> tasks, int playerCount) {
         this.id = id;
@@ -81,11 +79,6 @@ public class Mission {
         return completedTricks.size();
     }
 
-    public int getTrickWinnerIndex(int trickIndex) {
-        Trick trick = completedTricks.get(trickIndex);
-        return trick.getWinnerIndex(trick.getLeadSuit());
-    }
-
     public int getPlayerWinCount(int playerIndex) {
         int count = 0;
         for (Trick trick : completedTricks) {
@@ -125,6 +118,27 @@ public class Mission {
     }
 
     public void removeActiveToken(int playerIndex) {
-        activeTokens.removeIf(token -> token.getPlayerIndex() == playerIndex);
+        Iterator<CommunicationToken> it = activeTokens.iterator();
+        while (it.hasNext()) {
+            if (it.next().getPlayerIndex() == playerIndex) {
+                it.remove();
+            }
+        }
+    }
+
+    public boolean areAllTasksCompleted() {
+        for (Task task : tasks) {
+            if (!task.isCompleted()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void evaluateEnd() {
+        for (Task task : tasks) {
+            task.checkMissionEnd(this);
+        }
+        status = areAllTasksCompleted() ? MissionStatus.SUCCESS : MissionStatus.FAILED;
     }
 }

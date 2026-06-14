@@ -1,6 +1,8 @@
 package game.thecrew.model;
 
-public enum CardColor {
+import java.io.Serializable;
+
+public enum CardColor implements Serializable {
 
     BLUE,
     GREEN,

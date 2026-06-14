@@ -22,16 +22,16 @@ public class CommunicationTest {
         while (engine.getPhase() == GamePhase.TASK_SELECTION) {
             Mission mission = engine.getCurrentMission();
             Task nextTask = null;
-            for (Task t : mission.getTasks()) {
-                if (t.getAssignedPlayer() == null) {
-                    nextTask = t;
+            for (Task task : mission.getTasks()) {
+                if (task.getAssignedPlayer() == null) {
+                    nextTask = task;
                     break;
                 }
             }
             if (nextTask != null) {
-                engine.selectTask(engine.getCurrentPlayerIndex(), nextTask);
+                engine.selectTask(engine.getPlayerManager().getCurrentPlayerIndex(), nextTask);
             } else {
-                engine.passTaskSelection(engine.getCurrentPlayerIndex());
+                engine.passTaskSelection(engine.getPlayerManager().getCurrentPlayerIndex());
             }
         }
     }
@@ -39,7 +39,7 @@ public class CommunicationTest {
     @Test
     void testCommunicationValidation() {
         int playerIndex = 0;
-        Player player = engine.getPlayers().get(playerIndex);
+        Player player = engine.getPlayerManager().getPlayers().get(playerIndex);
         player.getHand().clear();
         
         // Give player some cards
@@ -48,7 +48,7 @@ public class CommunicationTest {
         player.addCardToHand(new Card(CardColor.RED, 3)); // Only red card
         player.addCardToHand(new Card(CardColor.SUBMARINE, 1)); // Trump not allowed
 
-        List<Card> validCards = engine.getValidCommunicationCards(playerIndex);
+        List<Card> validCards = engine.getCommunicationManager().getValidCommunicationCards(playerIndex, engine.getCurrentMission());
         
         // BLUE 1 (Lowest), BLUE 5 (Highest), RED 3 (Only) should be valid
         // SUBMARINE 1 should NOT be valid
@@ -61,7 +61,7 @@ public class CommunicationTest {
     @Test
     void testCommunicationFlow() {
         int playerIndex = 0;
-        Player player = engine.getPlayers().get(playerIndex);
+        Player player = engine.getPlayerManager().getPlayers().get(playerIndex);
         player.getHand().clear();
         Card blue1 = new Card(CardColor.BLUE, 1);
         player.addCardToHand(blue1);

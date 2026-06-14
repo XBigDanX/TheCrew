@@ -1,6 +1,8 @@
 package game.thecrew.model;
 
-public class TrickPlay {
+import java.io.Serializable;
+
+public class TrickPlay implements Serializable {
 
     private final int playerIndex;
     private final Card card;

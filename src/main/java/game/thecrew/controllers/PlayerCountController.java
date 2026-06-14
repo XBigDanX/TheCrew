@@ -39,7 +39,11 @@ public class PlayerCountController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/game/thecrew/GameBoard.fxml"));
             root.getScene().setRoot(loader.load());
         } catch (Exception e) {
-            e.printStackTrace();
+            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+            alert.setTitle("Error");
+            alert.setHeaderText("Navigation Error");
+            alert.setContentText("Could not load the game board: " + e.getMessage());
+            alert.showAndWait();
         }
     }
 }

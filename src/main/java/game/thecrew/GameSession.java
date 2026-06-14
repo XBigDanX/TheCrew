@@ -30,7 +30,7 @@ public class GameSession {
     }
 
     public List<Player> getPlayers() {
-        return engine.getPlayers();
+        return engine.getPlayerManager().getPlayers();
     }
 
     public Mission getCurrentMission() {

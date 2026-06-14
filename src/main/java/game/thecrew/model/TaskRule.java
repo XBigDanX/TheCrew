@@ -1,6 +1,8 @@
 package game.thecrew.model;
 
-public interface TaskRule {
+import java.io.Serializable;
+
+public interface TaskRule extends Serializable {
 
     boolean isTrickBased();
 

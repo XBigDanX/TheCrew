@@ -1,6 +1,8 @@
 package game.thecrew.model;
 
-public class Card {
+import java.io.Serializable;
+
+public class Card implements Serializable {
 
     private final CardColor color;
     private final int value;

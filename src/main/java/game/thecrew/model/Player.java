@@ -1,9 +1,11 @@
 package game.thecrew.model;
 
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
-public class Player {
+public class Player implements Serializable {
 
     private final String name;
     private final List<Card> hand;
@@ -40,17 +42,15 @@ public class Player {
     }
 
     public void sortHand() {
-        hand.sort((c1, c2) -> {
-
-            int colorCompare =
-                    Integer.compare(c1.getColor().ordinal(),
-                            c2.getColor().ordinal());
-
-            if (colorCompare != 0) {
-                return colorCompare;
+        hand.sort(new Comparator<Card>() {
+            @Override
+            public int compare(Card card1, Card card2) {
+                int colorComparison = Integer.compare(card1.getColor().ordinal(), card2.getColor().ordinal());
+                if (colorComparison != 0) {
+                    return colorComparison;
+                }
+                return Integer.compare(card1.getValue(), card2.getValue());
             }
-
-            return Integer.compare(c1.getValue(), c2.getValue());
         });
     }
 

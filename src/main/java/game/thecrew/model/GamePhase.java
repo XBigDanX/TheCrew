@@ -1,8 +1,11 @@
 package game.thecrew.model;
 
-public enum GamePhase {
+import java.io.Serializable;
+
+public enum GamePhase implements Serializable {
     TASK_SELECTION,
     COMMUNICATION,
     TRICKING,
-    MISSION_COMPLETE
+    MISSION_COMPLETE,
+    GAME_OVER
 }
