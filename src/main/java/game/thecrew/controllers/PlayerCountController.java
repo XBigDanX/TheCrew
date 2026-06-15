@@ -1,8 +1,5 @@
 package game.thecrew.controllers;
 
-import game.thecrew.GameApplication;
-import game.thecrew.GameSession;
-import game.thecrew.model.PlayerInfo;
 import game.thecrew.thread.NetworkThread;
 import game.thecrew.utils.NetworkUtils;
 import javafx.fxml.FXML;
