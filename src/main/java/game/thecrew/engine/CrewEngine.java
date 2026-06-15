@@ -22,15 +22,15 @@ public class CrewEngine {
     CommunicationManager communicationManager;
     GameStateManager stateManager;
 
-    // =========================
-    // INITIALIZATION
-    // =========================
-
     public void createPlayers(int playerCount) {
+        if (playerManager.getPlayerCount() == playerCount && stateManager != null) {
+            return; // Already initialized correctly
+        }
         playerManager.createPlayers(playerCount);
         communicationManager = new CommunicationManager(playerManager.getPlayers(), trickManager);
         communicationManager.init(playerCount);
         stateManager = new GameStateManager(this);
+        taskManager = new TaskSelectionManager(playerManager.getPlayers(), new ArrayList<>());
     }
 
     public void dealCards() {
@@ -49,10 +49,6 @@ public class CrewEngine {
         startNewMission();
     }
 
-    // =========================
-    // MISSION SETUP
-    // =========================
-
     private void startNewMission() {
         cardsPlayedInMission = 0;
         playerManager.clearHands();
@@ -67,13 +63,21 @@ public class CrewEngine {
         taskManager = new TaskSelectionManager(playerManager.getPlayers(), getCurrentMission().getTasks());
     }
 
-    // =========================
-    // TASK SELECTION
-    // =========================
-
     public boolean selectTask(int playerIndex, Task task) {
         if (phase != GamePhase.TASK_SELECTION || taskManager == null || playerIndex != playerManager.getCurrentPlayerIndex()) return false;
-        taskManager.selectTask(playerIndex, task);
+        
+        // Find the matching task in the current mission (because the task passed is a deserialized copy)
+        Task matchingTask = null;
+        for (Task t : getCurrentMission().getTasks()) {
+            if (t.equals(task) && t.getAssignedPlayer() == null) {
+                matchingTask = t;
+                break;
+            }
+        }
+        
+        if (matchingTask == null) return false;
+        
+        taskManager.selectTask(playerIndex, matchingTask);
         if (taskManager.isSelectionFinished()) startTrickPhase();
         else playerManager.nextPlayer();
         return true;
@@ -85,10 +89,6 @@ public class CrewEngine {
         playerManager.nextPlayer();
         return true;
     }
-
-    // =========================
-    // COMMUNICATION
-    // =========================
 
     private void startTrickPhase() {
         int requestingPlayerIndex = communicationManager.getNextRequestPlayerIndex();
@@ -131,32 +131,36 @@ public class CrewEngine {
         communicationManager.removeActiveToken(playerIndex, getCurrentMission());
     }
 
-    // =========================
-    // TRICK PLAY
-    // =========================
-
     public boolean playCard(int playerIndex, Card card) {
         if (phase != GamePhase.TRICKING || playerIndex != playerManager.getCurrentPlayerIndex()) return false;
         Player player = playerManager.getPlayers().get(playerIndex);
-        if (!player.getHand().contains(card) || !trickManager.playCard(playerIndex, card, player.getHand())) return false;
-        player.removeCardFromHand(card);
+        
+        // Find the actual card object in the player's hand
+        Card actualCard = null;
+        for (Card c : player.getHand()) {
+            if (c.equals(card)) {
+                actualCard = c;
+                break;
+            }
+        }
+        
+        if (actualCard == null || !trickManager.playCard(playerIndex, actualCard, player.getHand())) return false;
+        player.removeCardFromHand(actualCard);
         cardsPlayedInMission++;
         if (trickManager.isComplete(playerManager.getPlayerCount())) handleCompletedTrick();
         else playerManager.nextPlayer();
         return true;
     }
 
-    private void handleCompletedTrick() {
+    public void handleCompletedTrick() {
         Trick completed = trickManager.getCurrentTrick();
         getCurrentMission().addCompletedTrick(completed);
         if (getCurrentMission().areAllTasksCompleted()) {
             getCurrentMission().evaluateEnd();
             phase = GamePhase.MISSION_COMPLETE;
-            trickManager.reset();
         } else {
             playerManager.setCurrentPlayerIndex(trickManager.getWinner());
             communicationManager.applyPendingTokens(getCurrentMission());
-            trickManager.reset();
             int playerCount = playerManager.getPlayerCount();
             int maxCardsBeforeEnd = playerCount == 2 ? 40 : playerCount == 3 ? 39 : 40;
             if (cardsPlayedInMission >= maxCardsBeforeEnd) {
@@ -168,9 +172,9 @@ public class CrewEngine {
         }
     }
 
-    // =========================
-    // MISSION TRANSITIONS
-    // =========================
+    public void resetTrick() {
+        trickManager.reset();
+    }
 
     public void nextMission() {
         if (currentMissionIndex < missions.size() - 1) {
@@ -193,10 +197,6 @@ public class CrewEngine {
         startNewMission();
     }
 
-    // =========================
-    // PERSISTENCE
-    // =========================
-
     public GameState saveState() {
         return stateManager.saveState();
     }
@@ -204,10 +204,6 @@ public class CrewEngine {
     public void restoreState(GameState state) {
         stateManager.restoreState(state);
     }
-
-    // =========================
-    // GETTERS
-    // =========================
 
     public Mission getCurrentMission() {
         return missions.isEmpty() ? null : missions.get(currentMissionIndex);

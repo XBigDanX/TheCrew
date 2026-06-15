@@ -40,6 +40,14 @@ public class TaskSelectionManager {
         playersProcessed++;
     }
 
+    public int getPlayersProcessed() {
+        return playersProcessed;
+    }
+
+    public void setPlayersProcessed(int playersProcessed) {
+        this.playersProcessed = playersProcessed;
+    }
+
     public boolean isSelectionFinished() {
         for (Task task : availableTasks) {
             if (task.getAssignedPlayer() == null) {

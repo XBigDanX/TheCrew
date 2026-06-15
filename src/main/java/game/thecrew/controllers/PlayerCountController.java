@@ -1,14 +1,21 @@
 package game.thecrew.controllers;
 
+import game.thecrew.GameApplication;
 import game.thecrew.GameSession;
+import game.thecrew.model.PlayerInfo;
+import game.thecrew.thread.NetworkThread;
+import game.thecrew.utils.NetworkUtils;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
+import javafx.scene.control.Button;
 import javafx.scene.layout.VBox;
 
 public class PlayerCountController {
 
     @FXML
     private VBox root;
+
+    @FXML
+    private Button twoPlayersButton;
 
     @FXML
     private void onTwoPlayers() {
@@ -31,19 +38,10 @@ public class PlayerCountController {
     }
 
     private void navigateToGameBoard(int playerCount) {
-        GameSession session = new GameSession(playerCount);
-        session.start();
-        GameController.setSession(session);
+        NetworkThread nt = new NetworkThread(NetworkUtils.BASE_PORT, playerCount);
+        nt.setDaemon(true);
+        nt.start();
 
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/game/thecrew/GameBoard.fxml"));
-            root.getScene().setRoot(loader.load());
-        } catch (Exception e) {
-            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
-            alert.setTitle("Error");
-            alert.setHeaderText("Navigation Error");
-            alert.setContentText("Could not load the game board: " + e.getMessage());
-            alert.showAndWait();
-        }
+        HomeScreenController.joinGame("localhost", twoPlayersButton);
     }
 }

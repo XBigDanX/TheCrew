@@ -12,12 +12,15 @@ public class GameState implements Serializable {
     public GamePhase phase;
     public int currentPlayerIndex;
     public int captainIndex;
+    public int playersProcessed;
 
     public Map<Integer, List<Card>> playerHands;
 
     public List<TaskSnapshot> tasks;
 
     public boolean[] communicationUsed;
+    public int communicationPlayerIndex = -1;
+    public boolean[] communicationRequested;
     public List<CommunicationToken> activeTokens;
 
     public List<Trick> completedTricks;

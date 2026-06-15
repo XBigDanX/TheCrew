@@ -1,4 +1,7 @@
-package game.thecrew.model;
+package game.thecrew.model.taskrules;
+
+import game.thecrew.model.Mission;
+import game.thecrew.model.Trick;
 
 import java.io.Serializable;
 

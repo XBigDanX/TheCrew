@@ -1,5 +1,7 @@
 package game.thecrew.model;
 
+import game.thecrew.model.taskrules.TaskRule;
+
 import java.io.Serializable;
 
 public class Task implements Serializable {
@@ -36,6 +38,19 @@ public class Task implements Serializable {
 
     public void markCompleted() {
         this.completed = true;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Task task = (Task) o;
+        return description != null ? description.equals(task.description) : task.description == null;
+    }
+
+    @Override
+    public int hashCode() {
+        return description != null ? description.hashCode() : 0;
     }
 
     public void checkTrick(Mission mission, Trick trick, int winner) {

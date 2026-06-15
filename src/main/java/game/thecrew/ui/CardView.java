@@ -4,6 +4,7 @@ import game.thecrew.model.Card;
 import game.thecrew.model.CardColor;
 import game.thecrew.model.TokenPosition;
 import javafx.geometry.Pos;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -18,7 +19,7 @@ public class CardView extends StackPane {
 
         this.card = card;
 
-        Rectangle background = new Rectangle(40, 60);
+        Rectangle background = new Rectangle(60, 90);
 
         background.setFill(getColor(card.getColor()));
 
@@ -53,5 +54,14 @@ public class CardView extends StackPane {
 
     public Card getCard() {
         return card;
+    }
+
+    public static Region createBack() {
+        StackPane back = new StackPane();
+        Rectangle bg = new Rectangle(40, 60);
+        bg.setFill(Color.DARKGRAY);
+        bg.setStroke(Color.BLACK);
+        back.getChildren().add(bg);
+        return back;
     }
 }

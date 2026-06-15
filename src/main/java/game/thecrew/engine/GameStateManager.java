@@ -26,6 +26,9 @@ public class GameStateManager {
         state.phase = engine.getPhase();
         state.currentPlayerIndex = engine.getPlayerManager().getCurrentPlayerIndex();
         state.captainIndex = engine.getPlayerManager().getCaptainIndex();
+        if (engine.taskManager != null) {
+            state.playersProcessed = engine.taskManager.getPlayersProcessed();
+        }
 
         Map<Integer, List<Card>> playerHands = new HashMap<>();
         for (int i = 0; i < engine.getPlayerManager().getPlayers().size(); i++) {
@@ -52,6 +55,12 @@ public class GameStateManager {
         }
 
         state.activeTokens = new ArrayList<>(mission.getActiveTokens());
+
+        state.communicationPlayerIndex = engine.getCommunicationManager().getCommunicationPlayerIndex();
+        state.communicationRequested = new boolean[playerCount];
+        for (int i = 0; i < playerCount; i++) {
+            state.communicationRequested[i] = engine.getCommunicationManager().isCommunicationRequested(i);
+        }
 
         return state;
     }
@@ -122,9 +131,20 @@ public class GameStateManager {
         freshMission.getActiveTokens().addAll(state.activeTokens);
 
         engine.getCommunicationManager().init(engine.getPlayerManager().getPlayers().size());
+        if (state.communicationRequested != null) {
+            for (int i = 0; i < playerCount && i < state.communicationRequested.length; i++) {
+                if (state.communicationRequested[i]) {
+                    engine.getCommunicationManager().toggleRequest(i);
+                }
+            }
+        }
+        if (state.communicationPlayerIndex >= 0) {
+            engine.getCommunicationManager().startCommunication(state.communicationPlayerIndex);
+        }
 
         if (engine.phase == GamePhase.TASK_SELECTION) {
             engine.taskManager = new TaskSelectionManager(engine.getPlayerManager().getPlayers(), freshMission.getTasks());
+            engine.taskManager.setPlayersProcessed(state.playersProcessed);
         }
     }
 }

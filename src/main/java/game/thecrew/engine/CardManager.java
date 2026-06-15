@@ -39,6 +39,6 @@ public class CardManager {
                 }
             }
         }
-        return 0; // Default or error case
+        return 0;
     }
 }

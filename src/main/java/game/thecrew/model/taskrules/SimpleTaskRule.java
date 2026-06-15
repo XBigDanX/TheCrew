@@ -2,7 +2,6 @@ package game.thecrew.model.taskrules;
 
 import game.thecrew.model.*;
 
-import java.io.Serializable;
 import java.util.List;
 
 public class SimpleTaskRule implements TaskRule {

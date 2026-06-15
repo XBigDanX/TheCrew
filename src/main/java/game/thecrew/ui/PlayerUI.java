@@ -21,23 +21,4 @@ public class PlayerUI {
     public Pane getSlot() { return slot; }
     public HBox getTaskHand() { return taskHand; }
     public Pane getCommunicationArea() { return communicationArea; }
-
-    public void setVisible(boolean visible) {
-        if (hand != null) {
-            hand.setVisible(visible);
-            hand.setManaged(visible);
-        }
-        if (slot != null) {
-            slot.setVisible(visible);
-            slot.setManaged(visible);
-        }
-        if (taskHand != null) {
-            taskHand.setVisible(visible);
-            taskHand.setManaged(visible);
-        }
-        if (communicationArea != null) {
-            communicationArea.setVisible(visible);
-            communicationArea.setManaged(visible);
-        }
-    }
 }

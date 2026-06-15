@@ -8,7 +8,7 @@
 
    <Label text="Select number of players" style="-fx-font-size: 36; -fx-font-weight: bold;" />
 
-   <Button text="2 Players" style="-fx-font-size: 18;" onAction="#onTwoPlayers" />
+   <Button fx:id="twoPlayersButton" text="2 Players" style="-fx-font-size: 18;" onAction="#onTwoPlayers" />
 
    <Button text="3 Players" style="-fx-font-size: 18;" onAction="#onThreePlayers" />
 

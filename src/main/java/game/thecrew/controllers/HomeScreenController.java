@@ -2,7 +2,6 @@ package game.thecrew.controllers;
 
 import game.thecrew.GameApplication;
 import game.thecrew.model.PlayerInfo;
-import game.thecrew.thread.NetworkThread;
 import game.thecrew.utils.DocumentationUtils;
 import game.thecrew.utils.NetworkUtils;
 import javafx.fxml.FXML;
@@ -11,7 +10,6 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.Socket;
 
@@ -31,22 +29,29 @@ public class HomeScreenController {
 
     @FXML
     private void onHostGame() {
-        GameApplication.playerInfo = new PlayerInfo("PLAYER_0", 0);
-
-        NetworkThread nt = new NetworkThread(NetworkUtils.BASE_PORT);
-        nt.setDaemon(true);
-        nt.start();
-
-        System.out.println("Hosting game on port 6000...");
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/game/thecrew/PlayerCount.fxml"));
+            hostButton.getScene().setRoot(loader.load());
+        } catch (Exception e) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error");
+            alert.setHeaderText("Navigation Error");
+            alert.setContentText("Could not load player count selection: " + e.getMessage());
+            alert.showAndWait();
+        }
     }
 
     @FXML
     private void onJoinGame() {
         String hostIp = ipAddressField.getText().isEmpty() ? "localhost" : ipAddressField.getText();
+        joinGame(hostIp, joinButton);
+    }
 
+    public static void joinGame(String hostIp, Button sourceButton) {
         new Thread(() -> {
-            try (Socket socket = new Socket(hostIp, NetworkUtils.BASE_PORT);
-                 ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
+            try {
+                Socket socket = new Socket(hostIp, NetworkUtils.BASE_PORT);
+                ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 
                 PlayerInfo assignedInfo = (PlayerInfo) in.readObject();
                 GameApplication.playerInfo = assignedInfo;
@@ -54,9 +59,18 @@ public class HomeScreenController {
                 System.out.println("Joined as: " + assignedInfo.getName());
 
                 javafx.application.Platform.runLater(() -> {
-                    NetworkThread nt = new NetworkThread(NetworkUtils.BASE_PORT + assignedInfo.getIndex());
-                    nt.setDaemon(true);
-                    nt.start();
+                    GameController.setNetworkConnection(socket, in);
+                    try {
+                        FXMLLoader loader = new FXMLLoader(HomeScreenController.class.getResource("/game/thecrew/GameBoard.fxml"));
+                        sourceButton.getScene().setRoot(loader.load());
+                    } catch (Exception e) {
+                        e.printStackTrace(); // Log exact cause
+                        Alert alert = new Alert(Alert.AlertType.ERROR);
+                        alert.setTitle("Error");
+                        alert.setHeaderText("Navigation Error");
+                        alert.setContentText("Could not load the game board: " + e.getMessage());
+                        alert.showAndWait();
+                    }
                 });
 
             } catch (Exception e) {
