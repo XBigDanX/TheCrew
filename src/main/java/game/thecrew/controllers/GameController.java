@@ -208,8 +208,13 @@ public class GameController {
                                 renderCurrentTrick();
                                 renderAllHands();
                                 updateInfoLabels();
-                                PauseTransition delay = new PauseTransition(Duration.seconds(5));
-                                delay.setOnFinished(e -> refreshUI());
+                                PauseTransition delay = new PauseTransition(Duration.seconds(2));
+                                delay.setOnFinished(e -> {
+                                    // IMPORTANT: Manually reset the trick in the client's engine
+                                    // so that renderCurrentTrick() finds no cards to draw.
+                                    session.getEngine().resetTrick();
+                                    refreshUI();
+                                });
                                 delay.play();
                             } else {
                                 refreshUI();
@@ -250,8 +255,8 @@ public class GameController {
 
     private void refreshUI() {
         clearTrickSlots();
-        renderAllHands();
         renderCurrentTrick();
+        renderAllHands();
         renderTasks();
         updateTaskUI();
         updateInfoLabels();
