@@ -16,12 +16,12 @@
 
     <Label fx:id="currentPlayerLabel" layoutX="884.0" layoutY="17.0" text="Current Player: 0" />
 
-    <Button fx:id="passTaskSelectionButton" layoutX="1009.0" layoutY="13.0" prefWidth="120.0" text="Pass Tasks" />
+    <Button fx:id="passTaskSelectionButton" layoutX="1009.0" layoutY="13.0" onAction="#onPassClicked" prefWidth="120.0" text="Pass Tasks" />
 
-    <Button fx:id="communicateButton" layoutX="800.0" layoutY="13.0" managed="false" prefWidth="120.0" text="Communicate" visible="false" />
+    <Button layoutX="800.0" layoutY="13.0" managed="false" prefWidth="120.0" text="Communicate" visible="false" />
 
-    <Button fx:id="saveButton" layoutX="1318.0" layoutY="13.0" prefWidth="80.0" text="Save" />
-    <Button fx:id="loadButton" layoutX="1405.0" layoutY="13.0" prefWidth="80.0" text="Load" />
+    <Button layoutX="1318.0" layoutY="13.0" onAction="#onSaveClicked" prefWidth="80.0" text="Save" />
+    <Button layoutX="1405.0" layoutY="13.0" onAction="#onLoadClicked" prefWidth="80.0" text="Load" />
 
   </Pane>
 
@@ -88,9 +88,9 @@
       <Label fx:id="resultMessageLabel" style="-fx-font-size: 16;" />
 
       <HBox alignment="CENTER" spacing="15">
-        <Button fx:id="nextMissionButton" style="-fx-font-size: 14;" text="Next Mission" />
+        <Button fx:id="nextMissionButton" onAction="#onNextMissionClicked" style="-fx-font-size: 14;" text="Next Mission" />
 
-        <Button fx:id="retryButton" style="-fx-font-size: 14;" text="Retry Mission" />
+        <Button fx:id="retryButton" onAction="#onRetryMissionClicked" style="-fx-font-size: 14;" text="Retry Mission" />
       </HBox>
 
     </VBox>

@@ -21,9 +21,6 @@ public class GameController {
     @FXML private Label missionDescriptionLabel;
     @FXML private Label currentPlayerLabel;
     @FXML private Button passTaskSelectionButton;
-    @FXML private Button communicateButton;
-    @FXML private Button saveButton;
-    @FXML private Button loadButton;
     @FXML private Pane taskPane;
     @FXML private Pane trickPane;
     @FXML private HBox availableTasksBox;
@@ -105,11 +102,6 @@ public class GameController {
                 refreshUI();
             }
 
-            passTaskSelectionButton.setOnAction(event -> onPassClicked());
-            nextMissionButton.setOnAction(event -> onNextMissionClicked());
-            retryButton.setOnAction(event -> onRetryMissionClicked());
-            saveButton.setOnAction(event -> onSaveClicked());
-            loadButton.setOnAction(event -> onLoadClicked());
         } catch (Exception exception) {
             System.err.println("[DEBUG_LOG] Error in GameController.initialize():");
             exception.printStackTrace();
@@ -239,6 +231,7 @@ public class GameController {
         }
     }
 
+    @FXML
     private void onPassClicked() {
         int currentPlayerIndex = session.getEngine().getPlayerManager().getCurrentPlayerIndex();
         client.sendAction(
@@ -285,6 +278,7 @@ public class GameController {
         );
     }
 
+    @FXML
     private void onNextMissionClicked() {
         int myIndex = GameApplication.playerInfo.getIndex();
         client.sendAction(
@@ -292,6 +286,7 @@ public class GameController {
         );
     }
 
+    @FXML
     private void onRetryMissionClicked() {
         int myIndex = GameApplication.playerInfo.getIndex();
         client.sendAction(
@@ -299,10 +294,12 @@ public class GameController {
         );
     }
 
+    @FXML
     private void onSaveClicked() {
         FileUtils.save(session.getEngine().saveState());
     }
 
+    @FXML
     private void onLoadClicked() {
         GameState gameState = FileUtils.load();
         if (gameState == null) {
