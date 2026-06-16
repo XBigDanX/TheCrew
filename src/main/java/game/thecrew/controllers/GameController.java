@@ -11,18 +11,18 @@ import javafx.util.Duration;
 import game.thecrew.model.*;
 import game.thecrew.ui.CardView;
 import game.thecrew.ui.PlayerUI;
-import game.thecrew.ui.TaskView;
+import game.thecrew.ui.managers.HandUIManager;
+import game.thecrew.ui.managers.TaskUIManager;
+import game.thecrew.ui.managers.TrickUIManager;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 
-import java.util.Arrays;
 import java.util.List;
 
 public class GameController {
@@ -75,6 +75,10 @@ public class GameController {
 
     private boolean dismissTimerScheduled;
 
+    private HandUIManager handUIManager;
+    private TrickUIManager trickUIManager;
+    private TaskUIManager taskUIManager;
+
     // =========================
     // INIT
     // =========================
@@ -101,10 +105,13 @@ public class GameController {
 
             if (session != null) {
                 initPlayerUIs();
+                handUIManager = new HandUIManager(hand0, hand1, hand2, hand3, hand4);
+                trickUIManager = new TrickUIManager(slot0, slot1, slot2, slot3, slot4);
+                taskUIManager = new TaskUIManager(availableTasksBox, taskHand0, taskHand1, taskHand2, taskHand3, taskHand4);
                 setupPlayerViews();
                 updateInfoLabels();
-                renderAllHands();
-                renderTasks();
+                handUIManager.renderAllHands(session, playerCount, this::onCardClicked, this::onCommunicationCardSelected);
+                taskUIManager.renderTasks(session, playerCount, this::onTaskClicked);
                 initCommButtons();
                 updateMissionLabels();
                 updateCurrentPlayerLabel();
@@ -163,11 +170,11 @@ public class GameController {
 
 
     public void refreshUI() {
-        clearTrickSlots();
-        renderCurrentTrick();
-        renderAllHands();
-        renderTasks();
-        updateTaskUI();
+        trickUIManager.clearTrickSlots();
+        trickUIManager.renderCurrentTrick(session);
+        handUIManager.renderAllHands(session, playerCount, this::onCardClicked, this::onCommunicationCardSelected);
+        taskUIManager.renderTasks(session, playerCount, this::onTaskClicked);
+        taskUIManager.updateTaskUI(session, playerCount);
         updateInfoLabels();
         updateMissionLabels();
         updateCurrentPlayerLabel();
@@ -289,83 +296,11 @@ public class GameController {
     // =========================
 
     public void renderAllHands() {
-        for (int i = 0; i < playerCount; i++) {
-            renderPlayerHand(i);
-        }
-    }
-
-    private void renderPlayerHand(int playerIndex) {
-        if (playerUIs == null || playerIndex >= playerUIs.size() || playerUIs.get(playerIndex).getHand() == null) return;
-        if (session == null || session.getEngine() == null) return;
-
-        List<Player> players = session.getEngine().getPlayerManager().getPlayers();
-        if (playerIndex >= players.size()) return;
-
-        Player player = players.get(playerIndex);
-        FlowPane handPane = playerUIs.get(playerIndex).getHand();
-        handPane.getChildren().clear();
-
-        boolean isLocalPlayer = GameApplication.playerInfo != null && playerIndex == GameApplication.playerInfo.getIndex();
-        boolean isMyTurn = isLocalPlayer && session.getEngine().getPlayerManager().getCurrentPlayerIndex() == GameApplication.playerInfo.getIndex();
-
-        if (isLocalPlayer) {
-            int communicatingPlayerIndex = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
-            List<Card> validCommCards = (communicatingPlayerIndex == playerIndex)
-                    ? session.getEngine().getCommunicationManager().getValidCommunicationCards(playerIndex, session.getEngine().getCurrentMission())
-                    : null;
-
-            for (Card card : player.getHand()) {
-                CardView cardView = new CardView(card);
-
-                GamePhase currentPhase = session.getEngine().getPhase();
-                if (currentPhase == GamePhase.COMMUNICATION && communicatingPlayerIndex == playerIndex) {
-                    if (validCommCards != null && validCommCards.contains(card)) {
-                        final Card clickedCard = card;
-                        cardView.setStyle("-fx-border-color: yellow; -fx-border-width: 2;");
-                        cardView.setOnMouseClicked(e -> onCommunicationCardSelected(playerIndex, clickedCard));
-                    }
-                } else if (isMyTurn && currentPhase == GamePhase.TRICKING) {
-                    if (validCommCards != null && validCommCards.contains(card)) {
-                        final Card clickedCard = card;
-                        cardView.setStyle("-fx-border-color: yellow; -fx-border-width: 2;");
-                        cardView.setOnMouseClicked(e -> onCommunicationCardSelected(playerIndex, clickedCard));
-                    } else if (communicatingPlayerIndex == -1) {
-                        final Card clickedCard = card;
-                        cardView.setOnMouseClicked(e -> onCardClicked(playerIndex, clickedCard));
-                    }
-                }
-
-                handPane.getChildren().add(cardView);
-            }
-        } else {
-            for (int i = 0; i < player.getHand().size(); i++) {
-                handPane.getChildren().add(CardView.createBack());
-            }
-        }
+        handUIManager.renderAllHands(session, playerCount, this::onCardClicked, this::onCommunicationCardSelected);
     }
 
     private void renderTasks() {
-        if (availableTasksBox == null || session == null || session.getEngine() == null) return;
-        availableTasksBox.getChildren().clear();
-        Mission mission = session.getEngine().getCurrentMission();
-
-        if (mission == null) {
-            return;
-        }
-
-        boolean isMyTurn = GameApplication.playerInfo != null &&
-            session.getEngine().getPlayerManager().getCurrentPlayerIndex() == GameApplication.playerInfo.getIndex();
-
-        for (Task activeTask : mission.getTasks()) {
-            if (activeTask.getAssignedPlayer() == null) {
-                TaskView taskView = new TaskView(activeTask);
-                if (isMyTurn && session.getEngine().getPhase() == GamePhase.TASK_SELECTION) {
-                    final Task clickedTask = activeTask;
-                    taskView.setOnMouseClicked(e -> onTaskClicked(playerIndexFromTurn(), clickedTask));
-                }
-                availableTasksBox.getChildren().add(taskView);
-            }
-        }
+        taskUIManager.renderTasks(session, playerCount, this::onTaskClicked);
     }
 
     // =========================
@@ -509,31 +444,11 @@ public class GameController {
     }
 
     private void clearTrickSlots() {
-        if (playerUIs == null) return;
-        for (PlayerUI playerUI : playerUIs) {
-            if (playerUI.getSlot() != null) {
-                playerUI.getSlot().getChildren().clear();
-            }
-        }
+        trickUIManager.clearTrickSlots();
     }
 
     private void updateTaskUI() {
-        if (playerUIs == null || session == null || session.getEngine() == null) return;
-        List<Player> players = session.getEngine().getPlayerManager().getPlayers();
-        for (int i = 0; i < playerCount; i++) {
-            HBox taskHand = playerUIs.get(i).getTaskHand();
-            if (taskHand == null) continue;
-            taskHand.getChildren().clear();
-
-            if (i >= players.size()) continue;
-
-            Player player = players.get(i);
-            for (Task activeTask : player.getTaskHand()) {
-                TaskView taskView = new TaskView(activeTask);
-                taskView.setCompleted(activeTask.isCompleted());
-                taskHand.getChildren().add(taskView);
-            }
-        }
+        taskUIManager.updateTaskUI(session, playerCount);
     }
 
     // =========================
@@ -641,12 +556,12 @@ public class GameController {
     private void refreshAfterMissionTransition() {
         missionResultOverlay.setVisible(false);
         missionResultOverlay.setManaged(false);
-        clearTrickSlots();
-        renderAllHands();
-        renderCurrentTrick();
+        trickUIManager.clearTrickSlots();
+        handUIManager.renderAllHands(session, playerCount, this::onCardClicked, this::onCommunicationCardSelected);
+        trickUIManager.renderCurrentTrick(session);
         updateInfoLabels();
-        renderTasks();
-        updateTaskUI();
+        taskUIManager.renderTasks(session, playerCount, this::onTaskClicked);
+        taskUIManager.updateTaskUI(session, playerCount);
         updateMissionLabels();
         updateCurrentPlayerLabel();
         updatePhasePanels();
@@ -654,18 +569,7 @@ public class GameController {
     }
 
     public void renderCurrentTrick() {
-        if (playerUIs == null) return;
-        Trick currentTrick = session.getEngine().getTrickManager().getCurrentTrick();
-        if (currentTrick == null) return;
-        for (TrickPlay trickPlay : currentTrick.getPlays()) {
-            int playerIndex = trickPlay.getPlayerIndex();
-            if (playerIndex >= 0 && playerIndex < playerUIs.size()) {
-                Pane slot = playerUIs.get(playerIndex).getSlot();
-                if (slot != null) {
-                    slot.getChildren().add(new CardView(trickPlay.getCard()));
-                }
-            }
-        }
+        trickUIManager.renderCurrentTrick(session);
     }
 
     private int playerIndexFromTurn() {
