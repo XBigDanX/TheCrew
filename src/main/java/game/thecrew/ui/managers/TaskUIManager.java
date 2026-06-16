@@ -22,7 +22,7 @@ public class TaskUIManager {
         taskHands = new HBox[]{taskHand0, taskHand1, taskHand2, taskHand3, taskHand4};
     }
 
-    public void renderTasks(GameSession session, int playerCount, BiConsumer<Integer, Task> onTaskClicked) {
+    public void renderTasks(GameSession session, BiConsumer<Integer, Task> onTaskClicked) {
         if (availableTasksBox == null || session == null || session.getEngine() == null) return;
         availableTasksBox.getChildren().clear();
         Mission mission = session.getEngine().getCurrentMission();
@@ -44,14 +44,12 @@ public class TaskUIManager {
         }
     }
 
-    public void updateTaskUI(GameSession session, int playerCount) {
+    public void updateTaskUI(GameSession session) {
         if (session == null || session.getEngine() == null) return;
         List<Player> players = session.getEngine().getPlayerManager().getPlayers();
-        for (int i = 0; i < playerCount; i++) {
-            if (i >= taskHands.length || taskHands[i] == null) continue;
+        for (int i = 0; i < taskHands.length; i++) {
+            if (i >= players.size() || taskHands[i] == null) continue;
             taskHands[i].getChildren().clear();
-
-            if (i >= players.size()) continue;
 
             Player player = players.get(i);
             for (Task activeTask : player.getTaskHand()) {

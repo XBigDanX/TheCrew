@@ -2,7 +2,6 @@ package game.thecrew.model;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 public class Player implements Serializable {
@@ -42,15 +41,12 @@ public class Player implements Serializable {
     }
 
     public void sortHand() {
-        hand.sort(new Comparator<Card>() {
-            @Override
-            public int compare(Card card1, Card card2) {
-                int colorComparison = Integer.compare(card1.getColor().ordinal(), card2.getColor().ordinal());
-                if (colorComparison != 0) {
-                    return colorComparison;
-                }
-                return Integer.compare(card1.getValue(), card2.getValue());
+        hand.sort((card1, card2) -> {
+            int colorComparison = Integer.compare(card1.getColor().ordinal(), card2.getColor().ordinal());
+            if (colorComparison != 0) {
+                return colorComparison;
             }
+            return Integer.compare(card1.getValue(), card2.getValue());
         });
     }
 

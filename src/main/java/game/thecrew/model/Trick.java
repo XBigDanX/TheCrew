@@ -43,12 +43,9 @@ public class Trick implements Serializable {
                     winningCard = card;
                 }
 
-            } else if (!winningCard.isTrump() && card.getColor() == leadSuit) {
-
-                if (winningCard.getColor() != leadSuit || card.getValue() > winningCard.getValue()) {
-                    winnerIndex = play.getPlayerIndex();
-                    winningCard = card;
-                }
+            } else if (!winningCard.isTrump() && card.getColor() == leadSuit && (winningCard.getColor() != leadSuit || card.getValue() > winningCard.getValue())) {
+                winnerIndex = play.getPlayerIndex();
+                winningCard = card;
             }
         }
 

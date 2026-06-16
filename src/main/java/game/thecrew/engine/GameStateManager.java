@@ -89,13 +89,13 @@ public class GameStateManager {
 
         List<Task> freshTasks = freshMission.getTasks();
         for (TaskSnapshot snapshot : state.tasks) {
-            if (snapshot.taskIndex >= 0 && snapshot.taskIndex < freshTasks.size()) {
-                Task task = freshTasks.get(snapshot.taskIndex);
-                if (snapshot.assignedPlayer != null) {
-                    task.assignPlayer(snapshot.assignedPlayer);
-                    engine.getPlayerManager().getPlayers().get(snapshot.assignedPlayer).addTask(task);
+            if (snapshot.getTaskIndex() >= 0 && snapshot.getTaskIndex() < freshTasks.size()) {
+                Task task = freshTasks.get(snapshot.getTaskIndex());
+                if (snapshot.getAssignedPlayer() != null) {
+                    task.assignPlayer(snapshot.getAssignedPlayer());
+                    engine.getPlayerManager().getPlayers().get(snapshot.getAssignedPlayer()).addTask(task);
                 }
-                if (snapshot.completed) {
+                if (snapshot.isCompleted()) {
                     task.markCompleted();
                 }
             }

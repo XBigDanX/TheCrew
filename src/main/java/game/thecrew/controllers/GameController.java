@@ -176,10 +176,10 @@ public class GameController implements MissionClientCallback {
         );
 
         taskUIManager.renderTasks(
-            session, playerCount,
+            session,
             (playerIndex, task) -> onTaskClicked(playerIndex, task)
         );
-        taskUIManager.updateTaskUI(session, playerCount);
+        taskUIManager.updateTaskUI(session);
 
         handUIManager.renderCommunicationUI(
             session, playerCount,
