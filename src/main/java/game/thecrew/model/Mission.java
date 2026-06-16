@@ -1,6 +1,9 @@
 package game.thecrew.model;
 
+import game.thecrew.network.rmi.MissionService;
+
 import java.io.Serializable;
+import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -17,6 +20,15 @@ public class Mission implements Serializable {
     private final boolean[] communicationTokenUsed;
     private final List<CommunicationToken> activeTokens = new ArrayList<>();
     private MissionStatus status = MissionStatus.IN_PROGRESS;
+    private transient MissionService missionService;
+
+    public MissionService getMissionService() {
+        return missionService;
+    }
+
+    public void setMissionService(MissionService missionService) {
+        this.missionService = missionService;
+    }
 
     public Mission(int id, int difficulty, String description, List<Task> tasks, int playerCount) {
         this.id = id;
@@ -140,5 +152,12 @@ public class Mission implements Serializable {
             task.checkMissionEnd(this);
         }
         status = areAllTasksCompleted() ? MissionStatus.SUCCESS : MissionStatus.FAILED;
+        if (missionService != null) {
+            try {
+                missionService.logMissionCompletion(id, status == MissionStatus.SUCCESS, "Server");
+            } catch (RemoteException e) {
+                System.err.println("[RMI] Failed to log mission completion: " + e.getMessage());
+            }
+        }
     }
 }

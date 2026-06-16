@@ -2,6 +2,7 @@ module game.thecrew {
     requires javafx.controls;
     requires javafx.fxml;
     requires java.naming;
+    requires java.rmi;
 
     uses javax.naming.spi.InitialContextFactory;
 
@@ -14,4 +15,5 @@ module game.thecrew {
     exports game.thecrew.model;
     exports game.thecrew.model.taskrules;
     exports game.thecrew.network;
+    exports game.thecrew.network.rmi;
 }

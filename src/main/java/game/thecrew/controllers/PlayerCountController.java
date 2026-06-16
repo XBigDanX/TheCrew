@@ -1,5 +1,7 @@
 package game.thecrew.controllers;
 
+import game.thecrew.network.rmi.MissionLogServer;
+import game.thecrew.network.rmi.MissionServiceImpl;
 import game.thecrew.thread.NetworkThread;
 import game.thecrew.utils.NetworkUtils;
 import javafx.fxml.FXML;
@@ -35,7 +37,15 @@ public class PlayerCountController {
     }
 
     private void navigateToGameBoard(int playerCount) {
-        NetworkThread nt = new NetworkThread(NetworkUtils.BASE_PORT, playerCount);
+        MissionServiceImpl missionService = null;
+        try {
+            missionService = MissionLogServer.startServer();
+        } catch (Exception e) {
+            System.err.println("[RMI] Failed to start MissionLogServer: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        NetworkThread nt = new NetworkThread(NetworkUtils.BASE_PORT, playerCount, missionService);
         nt.setDaemon(true);
         nt.start();
 

@@ -2,6 +2,7 @@ package game.thecrew.engine;
 
 import game.thecrew.mission.MissionLibrary;
 import game.thecrew.model.*;
+import game.thecrew.network.rmi.MissionService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +18,7 @@ public class CrewEngine {
 
     private final CardManager cardManager = new CardManager();
     final PlayerManager playerManager = new PlayerManager(cardManager);
+    private MissionService missionService;
     TaskSelectionManager taskManager;
     private final TrickManager trickManager = new TrickManager();
     CommunicationManager communicationManager;
@@ -152,9 +154,14 @@ public class CrewEngine {
         return true;
     }
 
+    public void setMissionService(MissionService missionService) {
+        this.missionService = missionService;
+    }
+
     public void handleCompletedTrick() {
         Trick completed = trickManager.getCurrentTrick();
         getCurrentMission().addCompletedTrick(completed);
+        getCurrentMission().setMissionService(missionService);
         if (getCurrentMission().areAllTasksCompleted()) {
             getCurrentMission().evaluateEnd();
             phase = GamePhase.MISSION_COMPLETE;

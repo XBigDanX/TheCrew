@@ -7,8 +7,14 @@ import game.thecrew.model.GameState;
 import game.thecrew.model.PlayerInfo;
 import game.thecrew.model.TokenPosition;
 import game.thecrew.model.Card;
+import game.thecrew.model.Mission;
+import game.thecrew.model.MissionStatus;
 import game.thecrew.model.Task;
 import game.thecrew.utils.NetworkUtils;
+
+import game.thecrew.network.rmi.MissionServiceImpl;
+
+import java.rmi.RemoteException;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -27,10 +33,12 @@ public class NetworkThread extends Thread {
     private final AtomicInteger nextPlayerId = new AtomicInteger(0);
     private final List<ObjectOutputStream> clientOutputStreams = Collections.synchronizedList(new ArrayList<>());
     private GameSession session;
+    private MissionServiceImpl missionService;
 
-    public NetworkThread(int port, int maxPlayers) {
+    public NetworkThread(int port, int maxPlayers, MissionServiceImpl missionService) {
         this.port = port;
         this.maxPlayers = maxPlayers;
+        this.missionService = missionService;
     }
 
     @Override
@@ -133,6 +141,16 @@ public class NetworkThread extends Thread {
                 success = session.getEngine().playCard(action.getPlayerIndex(), (Card) action.getPayload());
                 if (success) {
                     broadcastState();
+                    Mission mission = session.getEngine().getCurrentMission();
+                    if (mission.getStatus() == MissionStatus.SUCCESS || mission.getStatus() == MissionStatus.FAILED) {
+                        if (missionService != null) {
+                            try {
+                                missionService.logMissionCompletion(mission.getId(), mission.getStatus() == MissionStatus.SUCCESS, "Server");
+                            } catch (RemoteException e) {
+                                System.err.println("[RMI] Failed to log mission completion: " + e.getMessage());
+                            }
+                        }
+                    }
                     if (session.getEngine().getTrickManager().isComplete(maxPlayers)) {
                         int winnerIndex = session.getEngine().getTrickManager().getWinner();
                         for (ObjectOutputStream clientOut : clientOutputStreams) {

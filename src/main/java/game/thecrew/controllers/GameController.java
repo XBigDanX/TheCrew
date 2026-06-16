@@ -3,19 +3,26 @@ package game.thecrew.controllers;
 import game.thecrew.GameApplication;
 import game.thecrew.GameSession;
 import game.thecrew.network.GameNetworkClient;
+import game.thecrew.network.rmi.MissionClientCallback;
+import game.thecrew.network.rmi.MissionService;
 import game.thecrew.utils.FileUtils;
 import game.thecrew.model.*;
 import game.thecrew.ui.PlayerUI;
 import game.thecrew.ui.managers.HandUIManager;
 import game.thecrew.ui.managers.TaskUIManager;
 import game.thecrew.ui.managers.TrickUIManager;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.List;
 
-public class GameController {
+public class GameController implements MissionClientCallback {
     @FXML private Label missionLabel;
     @FXML private Label difficultyLabel;
     @FXML private Label missionDescriptionLabel;
@@ -55,6 +62,7 @@ public class GameController {
     @FXML private Button nextMissionButton;
     @FXML private Button retryButton;
     @FXML public StackPane lobbyOverlay;
+    @FXML private TextArea missionLogArea;
     @FXML public Label lobbyStatusLabel;
 
     private List<PlayerUI> playerUIs;
@@ -101,6 +109,8 @@ public class GameController {
                 );
                 refreshUI();
             }
+
+            setupRMI();
 
         } catch (Exception exception) {
             System.err.println("[DEBUG_LOG] Error in GameController.initialize():");
@@ -276,6 +286,37 @@ public class GameController {
         client.sendAction(
             new GameAction(playerIndex, GameAction.ActionType.DISMISS_COMMUNICATION, null)
         );
+    }
+
+    private void setupRMI() {
+        try {
+            UnicastRemoteObject.exportObject(this, 0);
+            Registry registry = LocateRegistry.getRegistry("localhost");
+            MissionService service = (MissionService) registry.lookup("MissionService");
+            String playerName = GameApplication.playerInfo != null
+                ? "Player" + GameApplication.playerInfo.getIndex()
+                : "Unknown";
+            service.registerClient(playerName, this);
+            if (session != null && session.getEngine() != null) {
+                session.getEngine().setMissionService(service);
+            }
+            System.out.println("[RMI] Registered with MissionService as " + playerName);
+        } catch (Exception e) {
+            System.err.println("[RMI] Failed to setup RMI: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void updateLog(int missionId, boolean success, String playerName) throws RemoteException {
+        String result = success ? "USPJEH" : "NEUSPJEH";
+        String line = "Misija " + missionId + ": " + result;
+        Platform.runLater(() -> {
+            System.out.println("[RMI] " + line);
+            if (missionLogArea != null) {
+                missionLogArea.appendText(line + "\n");
+            }
+        });
     }
 
     @FXML
