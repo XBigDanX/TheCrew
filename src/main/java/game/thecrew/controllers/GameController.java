@@ -2,7 +2,7 @@ package game.thecrew.controllers;
 
 import game.thecrew.GameApplication;
 import game.thecrew.GameSession;
-import game.thecrew.thread.NetworkThread;
+import game.thecrew.network.GameNetworkClient;
 import game.thecrew.utils.FileUtils;
 import javafx.animation.PauseTransition;
 import javafx.event.ActionEvent;
@@ -22,9 +22,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.net.Socket;
 import java.util.Arrays;
 import java.util.List;
 
@@ -56,32 +53,21 @@ public class GameController {
     @FXML private Button nextMissionButton;
     @FXML private Button retryButton;
 
-    @FXML private StackPane lobbyOverlay;
-    @FXML private Label lobbyStatusLabel;
+    @FXML public StackPane lobbyOverlay;
+    @FXML public Label lobbyStatusLabel;
 
     private List<PlayerUI> playerUIs;
 
-    private static GameSession pendingSession;
-    private static Socket networkSocket;
-    private static ObjectInputStream networkInputStream;
-    private static java.io.ObjectOutputStream networkOutputStream;
+    public static GameSession pendingSession;
 
     public static void setSession(GameSession session) {
         pendingSession = session;
     }
 
-    public static void setNetworkConnection(Socket socket, ObjectInputStream inputStream) {
-        networkSocket = socket;
-        networkInputStream = inputStream;
-        try {
-            networkOutputStream = new java.io.ObjectOutputStream(socket.getOutputStream());
-        } catch (java.io.IOException e) {
-            e.printStackTrace();
-        }
-    }
+    public GameSession session;
+    public int playerCount;
 
-    private GameSession session;
-    private int playerCount;
+    private GameNetworkClient client;
 
     private Label[] infoLabels;
 
@@ -108,8 +94,9 @@ public class GameController {
                 }
             }
 
-            if (networkInputStream != null) {
-                setupLobbyListener();
+            client = new GameNetworkClient();
+            if (client.isConnected()) {
+                client.listen(this);
             }
 
             if (session != null) {
@@ -173,87 +160,9 @@ public class GameController {
         }
     }
 
-    // =========================
-    // LOBBY
-    // =========================
 
-    private void setupLobbyListener() {
-        lobbyOverlay.setManaged(true);
-        lobbyOverlay.setVisible(true);
 
-        Thread listener = new Thread(() -> {
-            try {
-                System.out.println("[DEBUG_LOG] Client lobby listener started.");
-                while (true) {
-                    Object obj = networkInputStream.readObject();
-                    System.out.println("[DEBUG_LOG] Received object: " + (obj == null ? "null" : obj.getClass().getName()) + " - " + obj);
-                    if (obj instanceof GameState) {
-                        GameState receivedState = (GameState) obj;
-                        Platform.runLater(() -> {
-                            if (session == null) {
-                                System.out.println("[DEBUG_LOG] Initializing session from received GameState for playerCount: " + playerCount);
-                                session = new GameSession(playerCount);
-                                session.getEngine().createPlayers(playerCount); // Ensure internalManagers are created
-                                initPlayerUIs();
-                                setupPlayerViews();
-                                lobbyOverlay.setManaged(false);
-                                lobbyOverlay.setVisible(false);
-                            } else {
-                                // Ensure players are created even if session was initialized by START_GAME
-                                session.getEngine().createPlayers(playerCount);
-                            }
-                            System.out.println("[DEBUG_LOG] Restoring GameState.");
-                            session.getEngine().restoreState(receivedState);
-                            if (session.getEngine().getTrickManager().isComplete(playerCount)) {
-                                renderCurrentTrick();
-                                renderAllHands();
-                                updateInfoLabels();
-                                PauseTransition delay = new PauseTransition(Duration.seconds(2));
-                                delay.setOnFinished(e -> {
-                                    // IMPORTANT: Manually reset the trick in the client's engine
-                                    // so that renderCurrentTrick() finds no cards to draw.
-                                    session.getEngine().resetTrick();
-                                    refreshUI();
-                                });
-                                delay.play();
-                            } else {
-                                refreshUI();
-                            }
-                        });
-                    } else if (obj instanceof String) {
-                        String msg = (String) obj;
-                        if ("START_GAME".equals(msg)) {
-                            System.out.println("[DEBUG_LOG] START_GAME signal received.");
-                            Platform.runLater(() -> {
-                                if (session == null) {
-                                    System.out.println("[DEBUG_LOG] START_GAME received. Initializing session locally for playerCount: " + playerCount);
-                                    session = new GameSession(playerCount);
-                                    session.getEngine().createPlayers(playerCount); // Ensure internalManagers are created
-                                    initPlayerUIs();
-                                    setupPlayerViews();
-                                }
-                                lobbyOverlay.setManaged(false);
-                                lobbyOverlay.setVisible(false);
-                                System.out.println("[DEBUG_LOG] Lobby overlay hidden.");
-                            });
-                        } else if (msg.startsWith("LOBBY_STATUS:")) {
-                            String status = msg.substring("LOBBY_STATUS:".length());
-                            Platform.runLater(() -> {
-                                lobbyStatusLabel.setText("Waiting for Players... (" + status + ")");
-                            });
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("[DEBUG_LOG] Error in client lobby listener: " + e.getMessage());
-                e.printStackTrace();
-            }
-        });
-        listener.setDaemon(true);
-        listener.start();
-    }
-
-    private void refreshUI() {
+    public void refreshUI() {
         clearTrickSlots();
         renderCurrentTrick();
         renderAllHands();
@@ -270,7 +179,7 @@ public class GameController {
     // SETUP HELPERS
     // =========================
 
-    private void initPlayerUIs() {
+    public void initPlayerUIs() {
         PlayerUI p0 = new PlayerUI(hand0, slot0, taskHand0, commArea0);
         PlayerUI p1 = new PlayerUI(hand1, slot1, taskHand1, commArea1);
         PlayerUI p2 = new PlayerUI(hand2, slot2, taskHand2, commArea2);
@@ -313,7 +222,7 @@ public class GameController {
         }
     }
 
-    private void setupPlayerViews() {
+    public void setupPlayerViews() {
         int myIndex = (GameApplication.playerInfo != null) ? GameApplication.playerInfo.getIndex() : -1;
         for (int i = 0; i < playerUIs.size(); i++) {
             boolean isActive = i < playerCount;
@@ -346,7 +255,7 @@ public class GameController {
         }
     }
 
-    private void updateInfoLabels() {
+    public void updateInfoLabels() {
         if (session == null || session.getEngine() == null) return;
         Mission mission = session.getEngine().getCurrentMission();
         if (mission == null) {
@@ -379,7 +288,7 @@ public class GameController {
     // RENDERING
     // =========================
 
-    private void renderAllHands() {
+    public void renderAllHands() {
         for (int i = 0; i < playerCount; i++) {
             renderPlayerHand(i);
         }
@@ -463,51 +372,38 @@ public class GameController {
     // EVENT HANDLERS
     // =========================
 
-    private static void sendAction(GameAction action) {
-        if (networkOutputStream != null) {
-            try {
-                networkOutputStream.reset();
-                networkOutputStream.writeObject(action);
-                networkOutputStream.flush();
-                System.out.println("[DEBUG_LOG] Sent action: " + action);
-            } catch (java.io.IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     private void onPassClicked() {
         int playerIndex = session.getEngine().getPlayerManager().getCurrentPlayerIndex();
-        sendAction(new GameAction(playerIndex, GameAction.ActionType.PASS_TASK_SELECTION, null));
+        client.sendAction(new GameAction(playerIndex, GameAction.ActionType.PASS_TASK_SELECTION, null));
     }
 
     private void onTaskClicked(int playerIndex, Task task) {
-        sendAction(new GameAction(playerIndex, GameAction.ActionType.SELECT_TASK, task));
+        client.sendAction(new GameAction(playerIndex, GameAction.ActionType.SELECT_TASK, task));
     }
 
     private void onCardClicked(int playerIndex, Card card) {
-        sendAction(new GameAction(playerIndex, GameAction.ActionType.PLAY_CARD, card));
+        client.sendAction(new GameAction(playerIndex, GameAction.ActionType.PLAY_CARD, card));
     }
 
     private void onCommunicateClicked(int playerIndex) {
-        sendAction(new GameAction(playerIndex, GameAction.ActionType.REQUEST_COMMUNICATION, null));
+        client.sendAction(new GameAction(playerIndex, GameAction.ActionType.REQUEST_COMMUNICATION, null));
     }
 
     private void onCommunicationCardSelected(int playerIndex, Card card) {
         TokenPosition position = session.getEngine().getCommunicationManager().resolveCommunicationPosition(playerIndex, card);
         if (position == null) return;
         
-        sendAction(new GameAction(playerIndex, GameAction.ActionType.SELECT_COMMUNICATION_CARD, new Object[]{card, position}));
+        client.sendAction(new GameAction(playerIndex, GameAction.ActionType.SELECT_COMMUNICATION_CARD, new Object[]{card, position}));
     }
 
     @FXML
     private void onNextMissionClicked() {
-        sendAction(new GameAction(GameApplication.playerInfo.getIndex(), GameAction.ActionType.NEXT_MISSION, null));
+        client.sendAction(new GameAction(GameApplication.playerInfo.getIndex(), GameAction.ActionType.NEXT_MISSION, null));
     }
 
     @FXML
     private void onRetryMissionClicked() {
-        sendAction(new GameAction(GameApplication.playerInfo.getIndex(), GameAction.ActionType.RETRY_MISSION, null));
+        client.sendAction(new GameAction(GameApplication.playerInfo.getIndex(), GameAction.ActionType.RETRY_MISSION, null));
     }
 
     private void updateCommunicationUI() {
@@ -602,7 +498,7 @@ public class GameController {
                     dismissTimerScheduled = true;
                     PauseTransition delay = new PauseTransition(Duration.seconds(5));
                     delay.setOnFinished(e -> {
-                        sendAction(new GameAction(localIndex, GameAction.ActionType.DISMISS_COMMUNICATION, null));
+                        client.sendAction(new GameAction(localIndex, GameAction.ActionType.DISMISS_COMMUNICATION, null));
                         dismissTimerScheduled = false;
                     });
                     delay.play();
@@ -733,8 +629,8 @@ public class GameController {
     private void onLoadClicked() {
         GameState state = FileUtils.load();
         if (state != null) {
-            if (networkOutputStream != null) {
-                sendAction(new GameAction(GameApplication.playerInfo.getIndex(), GameAction.ActionType.LOAD_GAME, state));
+            if (client.isOutputStreamReady()) {
+                client.sendAction(new GameAction(GameApplication.playerInfo.getIndex(), GameAction.ActionType.LOAD_GAME, state));
             } else {
                 session.getEngine().restoreState(state);
                 refreshAfterMissionTransition();
@@ -757,7 +653,7 @@ public class GameController {
         updateCommunicationUI();
     }
 
-    private void renderCurrentTrick() {
+    public void renderCurrentTrick() {
         if (playerUIs == null) return;
         Trick currentTrick = session.getEngine().getTrickManager().getCurrentTrick();
         if (currentTrick == null) return;

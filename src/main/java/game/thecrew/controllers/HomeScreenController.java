@@ -2,6 +2,7 @@ package game.thecrew.controllers;
 
 import game.thecrew.GameApplication;
 import game.thecrew.model.PlayerInfo;
+import game.thecrew.network.GameNetworkClient;
 import game.thecrew.utils.DocumentationUtils;
 import game.thecrew.utils.NetworkUtils;
 import javafx.fxml.FXML;
@@ -59,7 +60,7 @@ public class HomeScreenController {
                 System.out.println("Joined as: " + assignedInfo.getName());
 
                 javafx.application.Platform.runLater(() -> {
-                    GameController.setNetworkConnection(socket, in);
+                    GameNetworkClient.setNetworkConnection(socket, in);
                     try {
                         FXMLLoader loader = new FXMLLoader(HomeScreenController.class.getResource("/game/thecrew/GameBoard.fxml"));
                         sourceButton.getScene().setRoot(loader.load());
