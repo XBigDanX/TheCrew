@@ -1,7 +1,9 @@
 module game.thecrew {
     requires javafx.controls;
     requires javafx.fxml;
+    requires java.naming;
 
+    uses javax.naming.spi.InitialContextFactory;
 
     opens game.thecrew to javafx.fxml;
     exports game.thecrew;

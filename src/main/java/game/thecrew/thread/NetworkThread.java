@@ -1,5 +1,6 @@
 package game.thecrew.thread;
 
+import game.thecrew.utils.ConfigurationUtils;
 import game.thecrew.GameSession;
 import game.thecrew.model.GameAction;
 import game.thecrew.model.GameState;
@@ -7,6 +8,7 @@ import game.thecrew.model.PlayerInfo;
 import game.thecrew.model.TokenPosition;
 import game.thecrew.model.Card;
 import game.thecrew.model.Task;
+import game.thecrew.utils.NetworkUtils;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -33,7 +35,9 @@ public class NetworkThread extends Thread {
 
     @Override
     public void run() {
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
+        String portStr = ConfigurationUtils.getKey("server.port");
+        int resolvedPort = Integer.parseInt(portStr);
+        try (ServerSocket serverSocket = new ServerSocket(resolvedPort)) {
             while (nextPlayerId.get() < maxPlayers) {
                 try {
                     Socket clientSocket = serverSocket.accept();

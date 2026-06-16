@@ -3,6 +3,7 @@ package game.thecrew.controllers;
 import game.thecrew.GameApplication;
 import game.thecrew.model.PlayerInfo;
 import game.thecrew.network.GameNetworkClient;
+import game.thecrew.utils.ConfigurationUtils;
 import game.thecrew.utils.DocumentationUtils;
 import game.thecrew.utils.NetworkUtils;
 import javafx.fxml.FXML;
@@ -51,7 +52,9 @@ public class HomeScreenController {
     public static void joinGame(String hostIp, Button sourceButton) {
         new Thread(() -> {
             try {
-                Socket socket = new Socket(hostIp, NetworkUtils.BASE_PORT);
+                String portStr = ConfigurationUtils.getKey("server.port");;
+                int port = Integer.parseInt(portStr);
+                Socket socket = new Socket(hostIp, port);
                 ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 
                 PlayerInfo assignedInfo = (PlayerInfo) in.readObject();
