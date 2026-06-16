@@ -337,6 +337,10 @@ public class GameController {
         missionDescriptionLabel.setText(mission.getDescription());
     }
 
+    public void showTrickWinner(int winnerId) {
+        currentPlayerLabel.setText("Player " + (winnerId + 1) + " won the trick!");
+    }
+
     private void updateCurrentPlayerLabel() {
         if (session == null
             || session.getEngine() == null

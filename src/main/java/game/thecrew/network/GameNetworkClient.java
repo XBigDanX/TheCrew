@@ -110,6 +110,10 @@ public class GameNetworkClient {
                             Platform.runLater(() -> {
                                 controller.lobbyStatusLabel.setText("Waiting for Players... (" + status + ")");
                             });
+                        } else if (msg.startsWith("TRICK_WINNER:")) {
+                            String idStr = msg.substring("TRICK_WINNER:".length());
+                            int winnerId = Integer.parseInt(idStr);
+                            Platform.runLater(() -> controller.showTrickWinner(winnerId));
                         }
                     }
                 }

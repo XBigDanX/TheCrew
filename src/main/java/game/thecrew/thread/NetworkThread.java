@@ -121,11 +121,33 @@ public class NetworkThread extends Thread {
         boolean success = false;
         switch (action.getType()) {
             case PLAY_CARD:
+                if (action.getPlayerIndex() != session.getEngine().getPlayerManager().getCurrentPlayerIndex()) {
+                    System.out.println("Out of turn play attempted");
+                    success = false;
+                    break;
+                }
                 success = session.getEngine().playCard(action.getPlayerIndex(), (Card) action.getPayload());
                 if (success) {
                     broadcastState();
                     if (session.getEngine().getTrickManager().isComplete(maxPlayers)) {
-                        session.getEngine().resetTrick();
+                        int winnerIndex = session.getEngine().getTrickManager().getWinner();
+                        for (ObjectOutputStream clientOut : clientOutputStreams) {
+                            try {
+                                clientOut.writeObject("TRICK_WINNER:" + winnerIndex);
+                                clientOut.flush();
+                            } catch (IOException e) {
+                                System.err.println("Error sending TRICK_WINNER: " + e.getMessage());
+                            }
+                        }
+                        new Thread(() -> {
+                            try {
+                                Thread.sleep(2000);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                            session.getEngine().resetTrick();
+                            broadcastState();
+                        }).start();
                     }
                     return;
                 }
