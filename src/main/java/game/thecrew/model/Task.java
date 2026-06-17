@@ -66,10 +66,8 @@ public class Task implements Serializable {
     public void checkMissionEnd(Mission mission) {
         if (completed || assignedPlayer == null) return;
 
-        if (!rule.isTrickBased()) {
-            if (rule.checkMissionEnd(mission, assignedPlayer)) {
-                markCompleted();
-            }
+        if (!rule.isTrickBased() && rule.checkMissionEnd(mission, assignedPlayer)) {
+            markCompleted();
         }
     }
 }

@@ -36,8 +36,6 @@ public class GameNetworkClient {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            pendingSocket = null;
-            pendingInputStream = null;
         }
     }
 
@@ -62,26 +60,26 @@ public class GameNetworkClient {
                     if (obj instanceof GameState) {
                         GameState receivedState = (GameState) obj;
                         Platform.runLater(() -> {
-                            if (controller.session == null) {
-                                System.out.println("[DEBUG_LOG] Initializing session from received GameState for playerCount: " + controller.playerCount);
-                                controller.session = new GameSession(controller.playerCount);
-                                controller.session.getEngine().createPlayers(controller.playerCount);
+                            if (controller.getSession() == null) {
+                                System.out.println("[DEBUG_LOG] Initializing session from received GameState for playerCount: " + controller.getPlayerCount());
+                                controller.setSession(new GameSession(controller.getPlayerCount()));
+                                controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
                                 controller.initPlayerUIs();
                                 controller.setupPlayerViews();
                                 controller.lobbyOverlay.setManaged(false);
                                 controller.lobbyOverlay.setVisible(false);
                             } else {
-                                controller.session.getEngine().createPlayers(controller.playerCount);
+                                controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
                             }
                             System.out.println("[DEBUG_LOG] Restoring GameState.");
-                            controller.session.getEngine().restoreState(receivedState);
-                            if (controller.session.getEngine().getTrickManager().isComplete(controller.playerCount)) {
+                            controller.getSession().getEngine().restoreState(receivedState);
+                            if (controller.getSession().getEngine().getTrickManager().isComplete(controller.getPlayerCount())) {
                                 controller.renderCurrentTrick();
                                 controller.renderAllHands();
                                 controller.updateInfoLabels();
                                 PauseTransition delay = new PauseTransition(Duration.seconds(2));
                                 delay.setOnFinished(e -> {
-                                    controller.session.getEngine().resetTrick();
+                                    controller.getSession().getEngine().resetTrick();
                                     controller.refreshUI();
                                 });
                                 delay.play();
@@ -94,10 +92,10 @@ public class GameNetworkClient {
                         if ("START_GAME".equals(msg)) {
                             System.out.println("[DEBUG_LOG] START_GAME signal received.");
                             Platform.runLater(() -> {
-                                if (controller.session == null) {
-                                    System.out.println("[DEBUG_LOG] START_GAME received. Initializing session locally for playerCount: " + controller.playerCount);
-                                    controller.session = new GameSession(controller.playerCount);
-                                    controller.session.getEngine().createPlayers(controller.playerCount);
+                                if (controller.getSession() == null) {
+                                    System.out.println("[DEBUG_LOG] START_GAME received. Initializing session locally for playerCount: " + controller.getPlayerCount());
+                                    controller.setSession(new GameSession(controller.getPlayerCount()));
+                                    controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
                                     controller.initPlayerUIs();
                                     controller.setupPlayerViews();
                                 }

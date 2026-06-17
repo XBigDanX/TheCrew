@@ -6,6 +6,8 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
+import java.io.IOException;
+
 public class GameApplication extends Application {
 
     private static PlayerInfo playerInfo;
@@ -18,7 +20,7 @@ public class GameApplication extends Application {
         playerInfo = info;
     }
     @Override
-    public void start(Stage stage) throws Exception {
+    public void start(Stage stage) throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("HomeScreen.fxml"));
         Scene scene = new Scene(loader.load(), 1500, 800);
         stage.setTitle("The Crew");

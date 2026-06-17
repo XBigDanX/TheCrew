@@ -5,7 +5,6 @@ import game.thecrew.model.PlayerInfo;
 import game.thecrew.network.GameNetworkClient;
 import game.thecrew.utils.ConfigurationUtils;
 import game.thecrew.utils.DocumentationUtils;
-import game.thecrew.utils.NetworkUtils;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
@@ -14,6 +13,7 @@ import javafx.scene.control.TextField;
 
 import java.io.ObjectInputStream;
 import java.net.Socket;
+
 
 public class HomeScreenController {
 
@@ -29,6 +29,9 @@ public class HomeScreenController {
     @FXML
     private Button playButton;
 
+    public static final String ERROR_MSG = "Error";
+    public static final String NAVIGATION_ERROR_MSG = "Navigation Error";
+
     @FXML
     private void onHostGame() {
         try {
@@ -36,8 +39,8 @@ public class HomeScreenController {
             hostButton.getScene().setRoot(loader.load());
         } catch (Exception e) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Error");
-            alert.setHeaderText("Navigation Error");
+            alert.setTitle(ERROR_MSG);
+            alert.setHeaderText(NAVIGATION_ERROR_MSG);
             alert.setContentText("Could not load player count selection: " + e.getMessage());
             alert.showAndWait();
         }
@@ -52,7 +55,7 @@ public class HomeScreenController {
     public static void joinGame(String hostIp, Button sourceButton) {
         new Thread(() -> {
             try {
-                String portStr = ConfigurationUtils.getKey("server.port");;
+                String portStr = ConfigurationUtils.getKey("server.port");
                 int port = Integer.parseInt(portStr);
                 Socket socket = new Socket(hostIp, port);
                 ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
@@ -70,8 +73,8 @@ public class HomeScreenController {
                     } catch (Exception e) {
                         e.printStackTrace(); // Log exact cause
                         Alert alert = new Alert(Alert.AlertType.ERROR);
-                        alert.setTitle("Error");
-                        alert.setHeaderText("Navigation Error");
+                        alert.setTitle(ERROR_MSG);
+                        alert.setHeaderText(NAVIGATION_ERROR_MSG);
                         alert.setContentText("Could not load the game board: " + e.getMessage());
                         alert.showAndWait();
                     }
@@ -90,8 +93,8 @@ public class HomeScreenController {
             playButton.getScene().setRoot(loader.load());
         } catch (Exception e) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Error");
-            alert.setHeaderText("Navigation Error");
+            alert.setTitle(ERROR_MSG);
+            alert.setHeaderText(NAVIGATION_ERROR_MSG);
             alert.setContentText("Could not load the game board: " + e.getMessage());
             alert.showAndWait();
         }

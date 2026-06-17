@@ -169,7 +169,14 @@ public class CrewEngine {
             playerManager.setCurrentPlayerIndex(trickManager.getWinner());
             communicationManager.applyPendingTokens(getCurrentMission());
             int playerCount = playerManager.getPlayerCount();
-            int maxCardsBeforeEnd = playerCount == 2 ? 40 : playerCount == 3 ? 39 : 40;
+            int maxCardsBeforeEnd;
+            if (playerCount == 2) {
+                maxCardsBeforeEnd = 40;
+            } else if (playerCount == 3) {
+                maxCardsBeforeEnd = 39;
+            } else {
+                maxCardsBeforeEnd = 40;
+            }
             if (cardsPlayedInMission >= maxCardsBeforeEnd) {
                 getCurrentMission().evaluateEnd();
                 phase = getCurrentMission().getStatus() == MissionStatus.SUCCESS ? GamePhase.MISSION_COMPLETE : GamePhase.GAME_OVER;

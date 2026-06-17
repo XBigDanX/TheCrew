@@ -67,12 +67,28 @@ public class GameController implements MissionClientCallback {
 
     private List<PlayerUI> playerUIs;
     private Label[] infoLabels;
-    public GameSession session;
-    public int playerCount;
+    private GameSession session;
+    private int playerCount;
     private GameNetworkClient client;
     private HandUIManager handUIManager;
     private TrickUIManager trickUIManager;
     private TaskUIManager taskUIManager;
+
+    public GameSession getSession() {
+        return session;
+    }
+
+    public void setSession(GameSession session) {
+        this.session = session;
+    }
+
+    public int getPlayerCount() {
+        return playerCount;
+    }
+
+    public void setPlayerCount(int playerCount) {
+        this.playerCount = playerCount;
+    }
 
     @FXML
     public void initialize() {
@@ -104,8 +120,7 @@ public class GameController implements MissionClientCallback {
 
                 setupPlayerViews();
                 handUIManager.initCommButtons(
-                    playerCount,
-                    playerIndex -> onCommunicateClicked(playerIndex)
+                    playerCount, this::onCommunicateClicked
                 );
                 refreshUI();
             }
@@ -170,20 +185,16 @@ public class GameController implements MissionClientCallback {
         trickUIManager.renderCurrentTrick(session);
 
         handUIManager.renderAllHands(
-            session, playerCount,
-            (playerIndex, card) -> onCardClicked(playerIndex, card),
-            (playerIndex, card) -> onCommunicationCardSelected(playerIndex, card)
+            session, playerCount, this::onCardClicked, this::onCommunicationCardSelected
         );
 
         taskUIManager.renderTasks(
-            session,
-            (playerIndex, task) -> onTaskClicked(playerIndex, task)
+            session, this::onTaskClicked
         );
         taskUIManager.updateTaskUI(session);
 
         handUIManager.renderCommunicationUI(
-            session, playerCount,
-            playerIndex -> onDismissCommunication(playerIndex)
+            session, playerCount, this::onDismissCommunication
         );
 
         updateInfoLabels();
@@ -200,8 +211,8 @@ public class GameController implements MissionClientCallback {
     public void renderAllHands() {
         handUIManager.renderAllHands(
             session, playerCount,
-            (playerIndex, card) -> onCardClicked(playerIndex, card),
-            (playerIndex, card) -> onCommunicationCardSelected(playerIndex, card)
+            this::onCardClicked,
+            this::onCommunicationCardSelected
         );
     }
 

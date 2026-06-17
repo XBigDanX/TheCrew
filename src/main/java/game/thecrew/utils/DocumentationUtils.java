@@ -72,7 +72,7 @@ public class DocumentationUtils {
             );
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to generate documentation", e);
+            throw new IllegalStateException("Failed to generate documentation", e);
         }
     }
 }

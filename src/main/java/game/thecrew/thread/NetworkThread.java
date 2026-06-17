@@ -10,7 +10,6 @@ import game.thecrew.model.Card;
 import game.thecrew.model.Mission;
 import game.thecrew.model.MissionStatus;
 import game.thecrew.model.Task;
-import game.thecrew.utils.NetworkUtils;
 
 import game.thecrew.network.rmi.MissionServiceImpl;
 
