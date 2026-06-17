@@ -29,8 +29,8 @@ public class TaskUIManager {
 
         if (mission == null) return;
 
-        boolean isMyTurn = GameApplication.playerInfo != null &&
-            session.getEngine().getPlayerManager().getCurrentPlayerIndex() == GameApplication.playerInfo.getIndex();
+        boolean isMyTurn = GameApplication.getPlayerInfo() != null &&
+            session.getEngine().getPlayerManager().getCurrentPlayerIndex() == GameApplication.getPlayerInfo().getIndex();
 
         for (Task activeTask : mission.getTasks()) {
             if (activeTask.getAssignedPlayer() == null) {

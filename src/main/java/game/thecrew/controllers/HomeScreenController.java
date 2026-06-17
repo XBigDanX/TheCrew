@@ -58,7 +58,7 @@ public class HomeScreenController {
                 ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 
                 PlayerInfo assignedInfo = (PlayerInfo) in.readObject();
-                GameApplication.playerInfo = assignedInfo;
+                GameApplication.setPlayerInfo(assignedInfo);
 
                 System.out.println("Joined as: " + assignedInfo.getName());
 

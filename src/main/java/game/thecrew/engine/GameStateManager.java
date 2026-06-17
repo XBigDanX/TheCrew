@@ -20,21 +20,21 @@ public class GameStateManager {
         GameState state = new GameState();
 
         Mission mission = engine.getCurrentMission();
-        state.missionId = mission.getId();
-        state.currentMissionNumber = engine.getCurrentMissionNumber();
-        state.status = mission.getStatus();
-        state.phase = engine.getPhase();
-        state.currentPlayerIndex = engine.getPlayerManager().getCurrentPlayerIndex();
-        state.captainIndex = engine.getPlayerManager().getCaptainIndex();
+        state.setMissionId(mission.getId());
+        state.setCurrentMissionNumber(engine.getCurrentMissionNumber());
+        state.setStatus(mission.getStatus());
+        state.setPhase(engine.getPhase());
+        state.setCurrentPlayerIndex(engine.getPlayerManager().getCurrentPlayerIndex());
+        state.setCaptainIndex(engine.getPlayerManager().getCaptainIndex());
         if (engine.taskManager != null) {
-            state.playersProcessed = engine.taskManager.getPlayersProcessed();
+            state.setPlayersProcessed(engine.taskManager.getPlayersProcessed());
         }
 
         Map<Integer, List<Card>> playerHands = new HashMap<>();
         for (int i = 0; i < engine.getPlayerManager().getPlayers().size(); i++) {
             playerHands.put(i, new ArrayList<>(engine.getPlayerManager().getPlayers().get(i).getHand()));
         }
-        state.playerHands = playerHands;
+        state.setPlayerHands(playerHands);
 
         List<Task> missionTasks = mission.getTasks();
         List<TaskSnapshot> taskSnapshots = new ArrayList<>();
@@ -42,53 +42,67 @@ public class GameStateManager {
             Task task = missionTasks.get(i);
             taskSnapshots.add(new TaskSnapshot(i, task.getAssignedPlayer(), task.isCompleted()));
         }
-        state.tasks = taskSnapshots;
+        state.setTasks(taskSnapshots);
 
-        state.completedTricks = new ArrayList<>(mission.getCompletedTricks());
+        state.setCompletedTricks(new ArrayList<>(mission.getCompletedTricks()));
 
-        state.currentTrick = engine.getTrickManager().getCurrentTrick();
+        state.setCurrentTrick(engine.getTrickManager().getCurrentTrick());
 
         int playerCount = engine.getPlayerManager().getPlayers().size();
-        state.communicationUsed = new boolean[playerCount];
+        state.setCommunicationUsed(new boolean[playerCount]);
         for (int i = 0; i < playerCount; i++) {
-            state.communicationUsed[i] = mission.hasPlayerUsedToken(i);
+            state.getCommunicationUsed()[i] = mission.hasPlayerUsedToken(i);
         }
 
-        state.activeTokens = new ArrayList<>(mission.getActiveTokens());
+        state.setActiveTokens(new ArrayList<>(mission.getActiveTokens()));
 
-        state.communicationPlayerIndex = engine.getCommunicationManager().getCommunicationPlayerIndex();
-        state.communicationRequested = new boolean[playerCount];
+        state.setCommunicationPlayerIndex(engine.getCommunicationManager().getCommunicationPlayerIndex());
+        state.setCommunicationRequested(new boolean[playerCount]);
         for (int i = 0; i < playerCount; i++) {
-            state.communicationRequested[i] = engine.getCommunicationManager().isCommunicationRequested(i);
+            state.getCommunicationRequested()[i] = engine.getCommunicationManager().isCommunicationRequested(i);
         }
 
         return state;
     }
 
     public void restoreState(GameState state) {
-        engine.missions.clear();
         int playerCount = engine.getPlayerManager().getPlayers().size();
-        engine.playerManager.setCaptainIndex(state.captainIndex);
+
+        restoreMissions(state, playerCount);
+
+        Mission freshMission = engine.missions.get(state.getMissionId() - 1);
+
+        restoreTasks(state, freshMission);
+        restorePlayerHands(state);
+        restoreTrickAndPhase(state, freshMission);
+        restoreCommunicationState(state, freshMission, playerCount);
+    }
+
+    private void restoreMissions(GameState state, int playerCount) {
+        engine.missions.clear();
+        engine.playerManager.setCaptainIndex(state.getCaptainIndex());
         for (int missionId = 1; missionId <= 32; missionId++) {
             Mission mission = MissionLibrary.forPlayerCount(missionId, playerCount);
             mission.setCaptainIndex(engine.playerManager.getCaptainIndex());
             engine.missions.add(mission);
         }
 
-        engine.currentMissionIndex = state.missionId - 1;
+        engine.currentMissionIndex = state.getMissionId() - 1;
         Mission freshMission = engine.missions.get(engine.currentMissionIndex);
-        freshMission.setStatus(state.status);
+        freshMission.setStatus(state.getStatus());
 
         for (Mission mission : engine.missions) {
             mission.setCaptainIndex(engine.playerManager.getCaptainIndex());
         }
+    }
 
+    private void restoreTasks(GameState state, Mission freshMission) {
         for (int i = 0; i < engine.getPlayerManager().getPlayers().size(); i++) {
             engine.getPlayerManager().getPlayers().get(i).getTaskHand().clear();
         }
 
         List<Task> freshTasks = freshMission.getTasks();
-        for (TaskSnapshot snapshot : state.tasks) {
+        for (TaskSnapshot snapshot : state.getTasks()) {
             if (snapshot.getTaskIndex() >= 0 && snapshot.getTaskIndex() < freshTasks.size()) {
                 Task task = freshTasks.get(snapshot.getTaskIndex());
                 if (snapshot.getAssignedPlayer() != null) {
@@ -100,51 +114,57 @@ public class GameStateManager {
                 }
             }
         }
+    }
 
+    private void restorePlayerHands(GameState state) {
         for (int i = 0; i < engine.getPlayerManager().getPlayers().size(); i++) {
             engine.getPlayerManager().getPlayers().get(i).getHand().clear();
-            List<Card> savedHand = state.playerHands.get(i);
+            List<Card> savedHand = state.getPlayerHands().get(i);
             if (savedHand != null) {
                 for (Card card : savedHand) {
                     engine.getPlayerManager().getPlayers().get(i).addCardToHand(card);
                 }
             }
         }
+    }
 
-        engine.playerManager.setCaptainIndex(state.captainIndex);
-        engine.playerManager.setCurrentPlayerIndex(state.currentPlayerIndex);
-        engine.phase = state.phase;
+    private void restoreTrickAndPhase(GameState state, Mission freshMission) {
+        engine.playerManager.setCaptainIndex(state.getCaptainIndex());
+        engine.playerManager.setCurrentPlayerIndex(state.getCurrentPlayerIndex());
+        engine.phase = state.getPhase();
 
         freshMission.getCompletedTricks().clear();
-        freshMission.getCompletedTricks().addAll(state.completedTricks);
+        freshMission.getCompletedTricks().addAll(state.getCompletedTricks());
 
-        engine.getTrickManager().setCurrentTrick(state.currentTrick);
+        engine.getTrickManager().setCurrentTrick(state.getCurrentTrick());
 
-        engine.cardsPlayedInMission = state.completedTricks.size() * engine.getPlayerManager().getPlayers().size()
-                + state.currentTrick.getPlays().size();
+        engine.cardsPlayedInMission = state.getCompletedTricks().size() * engine.getPlayerManager().getPlayers().size()
+                + state.getCurrentTrick().getPlays().size();
 
+        if (engine.phase == GamePhase.TASK_SELECTION) {
+            engine.taskManager = new TaskSelectionManager(engine.getPlayerManager().getPlayers(), freshMission.getTasks());
+            engine.taskManager.setPlayersProcessed(state.getPlayersProcessed());
+        }
+    }
+
+    private void restoreCommunicationState(GameState state, Mission freshMission, int playerCount) {
         for (int i = 0; i < engine.getPlayerManager().getPlayers().size(); i++) {
-            freshMission.setPlayerUsedToken(i, state.communicationUsed[i]);
+            freshMission.setPlayerUsedToken(i, state.getCommunicationUsed()[i]);
         }
 
         freshMission.getActiveTokens().clear();
-        freshMission.getActiveTokens().addAll(state.activeTokens);
+        freshMission.getActiveTokens().addAll(state.getActiveTokens());
 
         engine.getCommunicationManager().init(engine.getPlayerManager().getPlayers().size());
-        if (state.communicationRequested != null) {
-            for (int i = 0; i < playerCount && i < state.communicationRequested.length; i++) {
-                if (state.communicationRequested[i]) {
+        if (state.getCommunicationRequested() != null) {
+            for (int i = 0; i < playerCount && i < state.getCommunicationRequested().length; i++) {
+                if (state.getCommunicationRequested()[i]) {
                     engine.getCommunicationManager().toggleRequest(i);
                 }
             }
         }
-        if (state.communicationPlayerIndex >= 0) {
-            engine.getCommunicationManager().startCommunication(state.communicationPlayerIndex);
-        }
-
-        if (engine.phase == GamePhase.TASK_SELECTION) {
-            engine.taskManager = new TaskSelectionManager(engine.getPlayerManager().getPlayers(), freshMission.getTasks());
-            engine.taskManager.setPlayersProcessed(state.playersProcessed);
+        if (state.getCommunicationPlayerIndex() >= 0) {
+            engine.getCommunicationManager().startCommunication(state.getCommunicationPlayerIndex());
         }
     }
 }

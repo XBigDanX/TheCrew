@@ -3,6 +3,8 @@ package game.thecrew.engine;
 import game.thecrew.model.*;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class CommunicationManager {
@@ -67,26 +69,9 @@ public class CommunicationManager {
 
         for (Card card : hand) {
             if (card.isTrump()) continue;
-
-            List<Card> sameColorCards = new ArrayList<>();
-            for (Card c : hand) {
-                if (c.getColor() == card.getColor()) {
-                    sameColorCards.add(c);
-                }
-            }
-
-            if (sameColorCards.size() == 1) {
+            List<Card> sameColorCards = getCardsByColor(hand, card.getColor());
+            if (isCommunicationEligible(card, sameColorCards)) {
                 validCards.add(card);
-            } else {
-                int min = Integer.MAX_VALUE;
-                int max = Integer.MIN_VALUE;
-                for (Card c : sameColorCards) {
-                    if (c.getValue() < min) min = c.getValue();
-                    if (c.getValue() > max) max = c.getValue();
-                }
-                if (card.getValue() == min || card.getValue() == max) {
-                    validCards.add(card);
-                }
             }
         }
         return validCards;
@@ -95,27 +80,44 @@ public class CommunicationManager {
     public List<TokenPosition> getValidPositionsForCard(int playerIndex, Card card) {
         List<TokenPosition> positions = new ArrayList<>();
         List<Card> hand = players.get(playerIndex).getHand();
-        List<Card> sameColorCards = new ArrayList<>();
-
-        for (Card c : hand) {
-            if (c.getColor() == card.getColor()) {
-                sameColorCards.add(c);
-            }
-        }
+        List<Card> sameColorCards = getCardsByColor(hand, card.getColor());
 
         if (sameColorCards.size() == 1) {
             positions.add(TokenPosition.MIDDLE);
         } else {
-            int min = Integer.MAX_VALUE;
-            int max = Integer.MIN_VALUE;
-            for (Card c : sameColorCards) {
-                if (c.getValue() < min) min = c.getValue();
-                if (c.getValue() > max) max = c.getValue();
-            }
+            int min = minValue(sameColorCards);
+            int max = maxValue(sameColorCards);
             if (card.getValue() == min) positions.add(TokenPosition.BOTTOM);
             if (card.getValue() == max) positions.add(TokenPosition.TOP);
         }
         return positions;
+    }
+
+    private static List<Card> getCardsByColor(List<Card> hand, CardColor color) {
+        List<Card> sameColorCards = new ArrayList<>();
+        for (Card c : hand) {
+            if (c.getColor() == color) {
+                sameColorCards.add(c);
+            }
+        }
+        return sameColorCards;
+    }
+
+    private static int minValue(List<Card> cards) {
+        return Collections.min(cards, Comparator.comparingInt(Card::getValue)).getValue();
+    }
+
+    private static int maxValue(List<Card> cards) {
+        return Collections.max(cards, Comparator.comparingInt(Card::getValue)).getValue();
+    }
+
+    private static boolean isCommunicationEligible(Card card, List<Card> sameColorCards) {
+        if (sameColorCards.size() == 1) {
+            return true;
+        }
+        int min = minValue(sameColorCards);
+        int max = maxValue(sameColorCards);
+        return card.getValue() == min || card.getValue() == max;
     }
 
     public TokenPosition resolveCommunicationPosition(int playerIndex, Card card) {

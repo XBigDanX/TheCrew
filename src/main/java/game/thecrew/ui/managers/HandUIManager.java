@@ -7,7 +7,6 @@ import game.thecrew.model.CommunicationToken;
 import game.thecrew.model.GamePhase;
 import game.thecrew.model.Mission;
 import game.thecrew.model.Player;
-import game.thecrew.model.TokenPosition;
 import game.thecrew.ui.CardView;
 import javafx.animation.PauseTransition;
 import javafx.geometry.Pos;
@@ -29,6 +28,8 @@ public class HandUIManager {
     private Button[] commActionButtons;
     private boolean dismissTimerScheduled;
 
+    private static final String GREEN_HAND_STYLE = "-fx-background-color: green; -fx-cursor: hand;";
+
     public HandUIManager(FlowPane hand0, FlowPane hand1, FlowPane hand2, FlowPane hand3, FlowPane hand4,
                          StackPane commArea0, StackPane commArea1, StackPane commArea2, StackPane commArea3, StackPane commArea4) {
         hands = new FlowPane[]{hand0, hand1, hand2, hand3, hand4};
@@ -42,7 +43,7 @@ public class HandUIManager {
             button.setMinSize(30, 30);
             button.setMaxSize(30, 30);
             button.setShape(new Circle(15));
-            button.setStyle("-fx-background-color: green; -fx-cursor: hand;");
+            button.setStyle(GREEN_HAND_STYLE);
             button.setManaged(false);
             button.setVisible(false);
             final int index = i;
@@ -76,8 +77,8 @@ public class HandUIManager {
         FlowPane handPane = hands[playerIndex];
         handPane.getChildren().clear();
 
-        boolean isLocalPlayer = GameApplication.playerInfo != null && playerIndex == GameApplication.playerInfo.getIndex();
-        boolean isMyTurn = isLocalPlayer && session.getEngine().getPlayerManager().getCurrentPlayerIndex() == GameApplication.playerInfo.getIndex();
+        boolean isLocalPlayer = GameApplication.getPlayerInfo() != null && playerIndex == GameApplication.getPlayerInfo().getIndex();
+        boolean isMyTurn = isLocalPlayer && session.getEngine().getPlayerManager().getCurrentPlayerIndex() == GameApplication.getPlayerInfo().getIndex();
 
         if (isLocalPlayer) {
             int communicatingPlayerIndex = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
@@ -139,7 +140,6 @@ public class HandUIManager {
             commButton.setManaged(showButtons);
             commButton.setVisible(showButtons);
             if (showButtons) {
-                boolean isLocal = GameApplication.playerInfo != null && i == GameApplication.playerInfo.getIndex();
                 boolean alreadyUsed = mission.hasPlayerUsedToken(i);
                 if (alreadyUsed) {
                     commButton.setStyle("-fx-background-color: red; -fx-cursor: default;");
@@ -150,7 +150,7 @@ public class HandUIManager {
                         commButton.setDisable(false);
                     } else if (communicatingPlayerIndex == -1) {
                         boolean canComm = !alreadyUsed && !session.getEngine().getCommunicationManager().getValidCommunicationCards(i, mission).isEmpty();
-                        commButton.setStyle(canComm ? "-fx-background-color: green; -fx-cursor: hand;" : "-fx-background-color: grey; -fx-cursor: default;");
+                        commButton.setStyle(canComm ? GREEN_HAND_STYLE : "-fx-background-color: grey; -fx-cursor: default;");
                         commButton.setDisable(!canComm);
                     } else {
                         commButton.setDisable(true);
@@ -162,7 +162,7 @@ public class HandUIManager {
                         commButton.setStyle("-fx-background-color: orange; -fx-cursor: hand;");
                         commButton.setDisable(false);
                     } else if (canComm) {
-                        commButton.setStyle("-fx-background-color: green; -fx-cursor: hand;");
+                        commButton.setStyle(GREEN_HAND_STYLE);
                         commButton.setDisable(false);
                     } else {
                         commButton.setStyle("-fx-background-color: grey; -fx-cursor: default;");
@@ -188,7 +188,7 @@ public class HandUIManager {
             }
         }
 
-        int localIndex = GameApplication.playerInfo != null ? GameApplication.playerInfo.getIndex() : -1;
+        int localIndex = GameApplication.getPlayerInfo() != null ? GameApplication.getPlayerInfo().getIndex() : -1;
         if (localIndex >= 0 && !dismissTimerScheduled) {
             for (CommunicationToken token : mission.getActiveTokens()) {
                 if (token.getPlayerIndex() == localIndex) {

@@ -8,7 +8,15 @@ import javafx.stage.Stage;
 
 public class GameApplication extends Application {
 
-    public static PlayerInfo playerInfo;
+    private static PlayerInfo playerInfo;
+
+    public static PlayerInfo getPlayerInfo() {
+        return playerInfo;
+    }
+
+    public static void setPlayerInfo(PlayerInfo info) {
+        playerInfo = info;
+    }
     @Override
     public void start(Stage stage) throws Exception {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("HomeScreen.fxml"));

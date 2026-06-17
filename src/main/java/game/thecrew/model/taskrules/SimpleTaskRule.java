@@ -206,86 +206,96 @@ public class SimpleTaskRule implements TaskRule {
                 }
                 yield count >= parameter;
             }
-            case CONSECUTIVE_TRICKS -> {
-                int maxStreak = 0;
-                int currentStreak = 0;
-                for (Trick trick : mission.getCompletedTricks()) {
-                    if (trick.getWinnerIndex(trick.getLeadSuit()) == playerIndex) {
-                        currentStreak++;
-                        maxStreak = Math.max(maxStreak, currentStreak);
-                    } else {
-                        currentStreak = 0;
-                    }
-                }
-                yield maxStreak >= parameter;
-            }
+            case CONSECUTIVE_TRICKS -> checkConsecutiveTricks(mission, playerIndex);
             case FEWER_THAN_CAPTAIN -> {
                 int captainCount = mission.getPlayerWinCount(mission.getCaptainIndex());
                 yield mission.getPlayerWinCount(playerIndex) < captainCount;
             }
-            case MORE_THAN_EVERYONE -> {
-                int myCount = mission.getPlayerWinCount(playerIndex);
-                boolean isMore = true;
-                for (int i = 0; i < mission.getPlayerCount(); i++) {
-                    if (i != playerIndex && mission.getPlayerWinCount(i) >= myCount) {
-                        isMore = false;
-                        break;
-                    }
-                }
-                yield isMore;
-            }
-            case COLOR_EQUAL -> {
-                CardColor otherColor = CardColor.values()[parameter];
-                long count1 = wonCards.stream().filter(card -> !card.isTrump() && card.getColor() == color).count();
-                long count2 = wonCards.stream().filter(card -> !card.isTrump() && card.getColor() == otherColor).count();
-                yield count1 > 0 && count1 == count2;
-            }
+            case MORE_THAN_EVERYONE -> checkMoreThanEveryone(mission, playerIndex);
+            case COLOR_EQUAL -> checkColorEqual(wonCards);
             case LAST_TRICK -> {
                 List<Trick> tricks = mission.getCompletedTricks();
                 if (tricks.isEmpty()) yield false;
                 Trick last = tricks.get(tricks.size() - 1);
                 yield last.getWinnerIndex(last.getLeadSuit()) == playerIndex;
             }
-            case COLOR_COMPARISON -> {
-                CardColor lessColor = CardColor.values()[parameter];
-                long moreCount = wonCards.stream().filter(card -> !card.isTrump() && card.getColor() == color).count();
-                long lessCount = wonCards.stream().filter(card -> !card.isTrump() && card.getColor() == lessColor).count();
-                yield moreCount > lessCount;
-            }
-            case ENTIRE_COLOR -> {
-                for (CardColor c : CardColor.values()) {
-                    if (c == CardColor.SUBMARINE) continue;
-                    long count = wonCards.stream().filter(card -> !card.isTrump() && card.getColor() == c).count();
-                    if (count == 9) yield true;
-                }
-                yield false;
-            }
-            case AVOID_LEAD -> {
-                boolean leadForbidden = false;
-                for (Trick trick : mission.getCompletedTricks()) {
-                    if (!trick.getPlays().isEmpty()) {
-                        TrickPlay lead = trick.getPlays().get(0);
-                        if (lead.getPlayerIndex() == playerIndex && lead.getCard().getColor() == color) {
-                            leadForbidden = true;
-                            break;
-                        }
-                    }
-                }
-                yield !leadForbidden;
-            }
-            case FIRST_AND_LAST -> {
-                List<Trick> tricks = mission.getCompletedTricks();
-                if (tricks.size() < 2) yield false;
-                Trick first = tricks.get(0);
-                Trick last = tricks.get(tricks.size() - 1);
-                yield first.getWinnerIndex(first.getLeadSuit()) == playerIndex &&
-                        last.getWinnerIndex(last.getLeadSuit()) == playerIndex;
-            }
+            case COLOR_COMPARISON -> checkColorComparison(wonCards);
+            case ENTIRE_COLOR -> checkEntireColor(wonCards);
+            case AVOID_LEAD -> checkAvoidLead(mission, playerIndex);
+            case FIRST_AND_LAST -> checkFirstAndLast(mission, playerIndex);
             default -> false;
         };
     }
 
     private int sumCards(Trick trick) {
         return trick.getPlays().stream().mapToInt(play -> play.getCard().getValue()).sum();
+    }
+
+    private boolean checkConsecutiveTricks(Mission mission, int playerIndex) {
+        int maxStreak = 0;
+        int currentStreak = 0;
+        for (Trick trick : mission.getCompletedTricks()) {
+            if (trick.getWinnerIndex(trick.getLeadSuit()) == playerIndex) {
+                currentStreak++;
+                maxStreak = Math.max(maxStreak, currentStreak);
+            } else {
+                currentStreak = 0;
+            }
+        }
+        return maxStreak >= parameter;
+    }
+
+    private boolean checkEntireColor(List<Card> wonCards) {
+        for (CardColor c : CardColor.values()) {
+            if (c == CardColor.SUBMARINE) continue;
+            long count = wonCards.stream().filter(card -> !card.isTrump() && card.getColor() == c).count();
+            if (count == 9) return true;
+        }
+        return false;
+    }
+
+    private boolean checkMoreThanEveryone(Mission mission, int playerIndex) {
+        int myCount = mission.getPlayerWinCount(playerIndex);
+        for (int i = 0; i < mission.getPlayerCount(); i++) {
+            if (i != playerIndex && mission.getPlayerWinCount(i) >= myCount) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean checkColorEqual(List<Card> wonCards) {
+        CardColor otherColor = CardColor.values()[parameter];
+        long count1 = wonCards.stream().filter(card -> !card.isTrump() && card.getColor() == color).count();
+        long count2 = wonCards.stream().filter(card -> !card.isTrump() && card.getColor() == otherColor).count();
+        return count1 > 0 && count1 == count2;
+    }
+
+    private boolean checkColorComparison(List<Card> wonCards) {
+        CardColor lessColor = CardColor.values()[parameter];
+        long moreCount = wonCards.stream().filter(card -> !card.isTrump() && card.getColor() == color).count();
+        long lessCount = wonCards.stream().filter(card -> !card.isTrump() && card.getColor() == lessColor).count();
+        return moreCount > lessCount;
+    }
+
+    private boolean checkAvoidLead(Mission mission, int playerIndex) {
+        for (Trick trick : mission.getCompletedTricks()) {
+            if (!trick.getPlays().isEmpty()) {
+                TrickPlay lead = trick.getPlays().get(0);
+                if (lead.getPlayerIndex() == playerIndex && lead.getCard().getColor() == color) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean checkFirstAndLast(Mission mission, int playerIndex) {
+        List<Trick> tricks = mission.getCompletedTricks();
+        if (tricks.size() < 2) return false;
+        Trick first = tricks.get(0);
+        Trick last = tricks.get(tricks.size() - 1);
+        return first.getWinnerIndex(first.getLeadSuit()) == playerIndex &&
+                last.getWinnerIndex(last.getLeadSuit()) == playerIndex;
     }
 }

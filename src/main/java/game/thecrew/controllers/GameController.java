@@ -77,8 +77,8 @@ public class GameController implements MissionClientCallback {
     @FXML
     public void initialize() {
         try {
-            if (GameApplication.playerInfo != null) {
-                playerCount = GameApplication.playerInfo.getTotalPlayers();
+            if (GameApplication.getPlayerInfo() != null) {
+                playerCount = GameApplication.getPlayerInfo().getTotalPlayers();
                 if (playerCount > 0) {
                     session = new GameSession(playerCount);
                 }
@@ -133,8 +133,8 @@ public class GameController implements MissionClientCallback {
     }
 
     public void setupPlayerViews() {
-        int myPlayerIndex = (GameApplication.playerInfo != null)
-            ? GameApplication.playerInfo.getIndex()
+        int myPlayerIndex = (GameApplication.getPlayerInfo() != null)
+            ? GameApplication.getPlayerInfo().getIndex()
             : -1;
 
         for (int i = 0; i < playerUIs.size(); i++) {
@@ -293,8 +293,8 @@ public class GameController implements MissionClientCallback {
             UnicastRemoteObject.exportObject(this, 0);
             Registry registry = LocateRegistry.getRegistry("localhost");
             MissionService service = (MissionService) registry.lookup("MissionService");
-            String playerName = GameApplication.playerInfo != null
-                ? "Player" + GameApplication.playerInfo.getIndex()
+            String playerName = GameApplication.getPlayerInfo() != null
+                ? "Player" + GameApplication.getPlayerInfo().getIndex()
                 : "Unknown";
             service.registerClient(playerName, this);
             if (session != null && session.getEngine() != null) {
@@ -321,7 +321,7 @@ public class GameController implements MissionClientCallback {
 
     @FXML
     private void onNextMissionClicked() {
-        int myIndex = GameApplication.playerInfo.getIndex();
+        int myIndex = GameApplication.getPlayerInfo().getIndex();
         client.sendAction(
             new GameAction(myIndex, GameAction.ActionType.NEXT_MISSION, null)
         );
@@ -329,7 +329,7 @@ public class GameController implements MissionClientCallback {
 
     @FXML
     private void onRetryMissionClicked() {
-        int myIndex = GameApplication.playerInfo.getIndex();
+        int myIndex = GameApplication.getPlayerInfo().getIndex();
         client.sendAction(
             new GameAction(myIndex, GameAction.ActionType.RETRY_MISSION, null)
         );
@@ -348,7 +348,7 @@ public class GameController implements MissionClientCallback {
         }
 
         if (client.isOutputStreamReady()) {
-            int myIndex = GameApplication.playerInfo.getIndex();
+            int myIndex = GameApplication.getPlayerInfo().getIndex();
             client.sendAction(
                 new GameAction(myIndex, GameAction.ActionType.LOAD_GAME, gameState)
             );
@@ -404,9 +404,9 @@ public class GameController implements MissionClientCallback {
         passTaskSelectionButton.setManaged(taskPhase);
 
         if (taskPhase) {
-            boolean myTurn = GameApplication.playerInfo != null
+            boolean myTurn = GameApplication.getPlayerInfo() != null
                 && session.getEngine().getPlayerManager().getCurrentPlayerIndex()
-                    == GameApplication.playerInfo.getIndex();
+                    == GameApplication.getPlayerInfo().getIndex();
             passTaskSelectionButton.setDisable(!myTurn);
         }
 

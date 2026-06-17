@@ -3,6 +3,7 @@ module game.thecrew {
     requires javafx.fxml;
     requires java.naming;
     requires java.rmi;
+    requires java.logging;
 
     uses javax.naming.spi.InitialContextFactory;
 

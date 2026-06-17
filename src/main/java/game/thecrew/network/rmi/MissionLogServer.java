@@ -3,9 +3,12 @@ package game.thecrew.network.rmi;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class MissionLogServer {
 
+    private static final Logger LOGGER = Logger.getLogger(MissionLogServer.class.getName());
     private static final int PORT = 1099;
     private static final String BIND_NAME = "MissionService";
 
@@ -16,17 +19,16 @@ public final class MissionLogServer {
         MissionServiceImpl service = new MissionServiceImpl();
         Registry registry = LocateRegistry.createRegistry(PORT);
         registry.rebind(BIND_NAME, service);
-        System.out.println("[RMI] MissionService bound on port " + PORT);
+        LOGGER.info("[RMI] MissionService bound on port " + PORT);
         return service;
     }
 
     public static void main(String[] args) {
         try {
             startServer();
-            System.out.println("[RMI] MissionLogServer is running...");
+            LOGGER.info("[RMI] MissionLogServer is running...");
         } catch (RemoteException e) {
-            System.err.println("[RMI] Failed to start server: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "[RMI] Failed to start server: {0}", e.getMessage());
         }
     }
 
