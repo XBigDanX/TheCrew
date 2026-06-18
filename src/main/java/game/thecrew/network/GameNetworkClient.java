@@ -4,9 +4,14 @@ import game.thecrew.GameSession;
 import game.thecrew.controllers.GameController;
 import game.thecrew.model.GameAction;
 import game.thecrew.model.GameState;
+import game.thecrew.model.TrickPlay;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.scene.layout.Pane;
 import javafx.util.Duration;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -89,19 +94,42 @@ public class GameNetworkClient {
                 controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
             }
             LOGGER.log(Level.INFO, "[DEBUG_LOG] Restoring GameState.");
+
+            List<TrickPlay> oldPlays = new ArrayList<>(controller.getSession().getEngine().getTrickManager().getCurrentTrick().getPlays());
             controller.getSession().getEngine().restoreState(receivedState);
+            List<TrickPlay> newPlays = controller.getSession().getEngine().getTrickManager().getCurrentTrick().getPlays();
+
+            boolean hadNewPlay = false;
+            if (newPlays.size() > oldPlays.size()) {
+                hadNewPlay = true;
+                for (int i = oldPlays.size(); i < newPlays.size(); i++) {
+                    TrickPlay play = newPlays.get(i);
+                    Pane sourcePane = controller.getPlayerUIs().get(play.getPlayerIndex()).getHand();
+                    controller.getTrickUIManager().animateCardToSlot(play.getCard(), play.getPlayerIndex(), sourcePane);
+                }
+            }
+
             if (controller.getSession().getEngine().getTrickManager().isComplete(controller.getPlayerCount())) {
-                controller.renderCurrentTrick();
+                if (!hadNewPlay) {
+                    controller.renderCurrentTrick();
+                }
                 controller.renderAllHands();
                 controller.updateInfoLabels();
-                PauseTransition delay = new PauseTransition(Duration.seconds(2));
+                PauseTransition delay = new PauseTransition(Duration.millis(hadNewPlay ? 500 : 100));
                 delay.setOnFinished(e -> {
-                    controller.getSession().getEngine().resetTrick();
-                    controller.refreshUI();
+                    int winnerIndex = controller.getSession().getEngine().getTrickManager().getWinner();
+                    controller.getTrickUIManager().animateTrickEnd(winnerIndex, () -> {
+                        controller.getSession().getEngine().resetTrick();
+                        controller.refreshUI();
+                    });
                 });
                 delay.play();
             } else {
-                controller.refreshUI();
+                controller.renderAllHands();
+                controller.updateInfoLabels();
+                if (!hadNewPlay) {
+                    controller.refreshUI();
+                }
             }
         });
     }
