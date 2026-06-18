@@ -58,59 +58,9 @@ public class GameNetworkClient {
                     Object obj = networkInputStream.readObject();
                     System.out.println("[DEBUG_LOG] Received object: " + (obj == null ? "null" : obj.getClass().getName()) + " - " + obj);
                     if (obj instanceof GameState) {
-                        GameState receivedState = (GameState) obj;
-                        Platform.runLater(() -> {
-                            if (controller.getSession() == null) {
-                                System.out.println("[DEBUG_LOG] Initializing session from received GameState for playerCount: " + controller.getPlayerCount());
-                                controller.setSession(new GameSession(controller.getPlayerCount()));
-                                controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
-                                controller.initPlayerUIs();
-                                controller.setupPlayerViews();
-                                controller.lobbyOverlay.setManaged(false);
-                                controller.lobbyOverlay.setVisible(false);
-                            } else {
-                                controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
-                            }
-                            System.out.println("[DEBUG_LOG] Restoring GameState.");
-                            controller.getSession().getEngine().restoreState(receivedState);
-                            if (controller.getSession().getEngine().getTrickManager().isComplete(controller.getPlayerCount())) {
-                                controller.renderCurrentTrick();
-                                controller.renderAllHands();
-                                controller.updateInfoLabels();
-                                PauseTransition delay = new PauseTransition(Duration.seconds(2));
-                                delay.setOnFinished(e -> {
-                                    controller.getSession().getEngine().resetTrick();
-                                    controller.refreshUI();
-                                });
-                                delay.play();
-                            } else {
-                                controller.refreshUI();
-                            }
-                        });
+                        handleGameState(controller, (GameState) obj);
                     } else if (obj instanceof String) {
-                        String msg = (String) obj;
-                        if ("START_GAME".equals(msg)) {
-                            System.out.println("[DEBUG_LOG] START_GAME signal received.");
-                            Platform.runLater(() -> {
-                                if (controller.getSession() == null) {
-                                    System.out.println("[DEBUG_LOG] START_GAME received. Initializing session locally for playerCount: " + controller.getPlayerCount());
-                                    controller.setSession(new GameSession(controller.getPlayerCount()));
-                                    controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
-                                    controller.initPlayerUIs();
-                                    controller.setupPlayerViews();
-                                }
-                                controller.lobbyOverlay.setManaged(false);
-                                controller.lobbyOverlay.setVisible(false);
-                                System.out.println("[DEBUG_LOG] Lobby overlay hidden.");
-                            });
-                        } else if (msg.startsWith("LOBBY_STATUS:")) {
-                            String status = msg.substring("LOBBY_STATUS:".length());
-                            Platform.runLater(() -> controller.lobbyStatusLabel.setText("Waiting for Players... (" + status + ")"));
-                        } else if (msg.startsWith("TRICK_WINNER:")) {
-                            String idStr = msg.substring("TRICK_WINNER:".length());
-                            int winnerId = Integer.parseInt(idStr);
-                            Platform.runLater(() -> controller.showTrickWinner(winnerId));
-                        }
+                        handleStringMessage(controller, (String) obj);
                     }
                 }
             } catch (Exception e) {
@@ -120,6 +70,66 @@ public class GameNetworkClient {
         });
         listener.setDaemon(true);
         listener.start();
+    }
+
+    private void handleGameState(GameController controller, GameState receivedState) {
+        Platform.runLater(() -> {
+            if (controller.getSession() == null) {
+                System.out.println("[DEBUG_LOG] Initializing session from received GameState for playerCount: " + controller.getPlayerCount());
+                controller.setSession(new GameSession(controller.getPlayerCount()));
+                controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
+                controller.initPlayerUIs();
+                controller.setupPlayerViews();
+                controller.lobbyOverlay.setManaged(false);
+                controller.lobbyOverlay.setVisible(false);
+            } else {
+                controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
+            }
+            System.out.println("[DEBUG_LOG] Restoring GameState.");
+            controller.getSession().getEngine().restoreState(receivedState);
+            if (controller.getSession().getEngine().getTrickManager().isComplete(controller.getPlayerCount())) {
+                controller.renderCurrentTrick();
+                controller.renderAllHands();
+                controller.updateInfoLabels();
+                PauseTransition delay = new PauseTransition(Duration.seconds(2));
+                delay.setOnFinished(e -> {
+                    controller.getSession().getEngine().resetTrick();
+                    controller.refreshUI();
+                });
+                delay.play();
+            } else {
+                controller.refreshUI();
+            }
+        });
+    }
+
+    private void handleStringMessage(GameController controller, String msg) {
+        if ("START_GAME".equals(msg)) {
+            handleStartGame(controller);
+        } else if (msg.startsWith("LOBBY_STATUS:")) {
+            String status = msg.substring("LOBBY_STATUS:".length());
+            Platform.runLater(() -> controller.lobbyStatusLabel.setText("Waiting for Players... (" + status + ")"));
+        } else if (msg.startsWith("TRICK_WINNER:")) {
+            String idStr = msg.substring("TRICK_WINNER:".length());
+            int winnerId = Integer.parseInt(idStr);
+            Platform.runLater(() -> controller.showTrickWinner(winnerId));
+        }
+    }
+
+    private void handleStartGame(GameController controller) {
+        System.out.println("[DEBUG_LOG] START_GAME signal received.");
+        Platform.runLater(() -> {
+            if (controller.getSession() == null) {
+                System.out.println("[DEBUG_LOG] START_GAME received. Initializing session locally for playerCount: " + controller.getPlayerCount());
+                controller.setSession(new GameSession(controller.getPlayerCount()));
+                controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
+                controller.initPlayerUIs();
+                controller.setupPlayerViews();
+            }
+            controller.lobbyOverlay.setManaged(false);
+            controller.lobbyOverlay.setVisible(false);
+            System.out.println("[DEBUG_LOG] Lobby overlay hidden.");
+        });
     }
 
     public void sendAction(GameAction action) {

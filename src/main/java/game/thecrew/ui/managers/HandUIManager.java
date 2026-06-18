@@ -19,7 +19,7 @@ import javafx.util.Duration;
 
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 public class HandUIManager {
 
@@ -36,7 +36,7 @@ public class HandUIManager {
         commAreas = new StackPane[]{commArea0, commArea1, commArea2, commArea3, commArea4};
     }
 
-    public void initCommButtons(int playerCount, Consumer<Integer> onCommClicked) {
+    public void initCommButtons(int playerCount, IntConsumer onCommClicked) {
         commActionButtons = new Button[playerCount];
         for (int i = 0; i < playerCount; i++) {
             Button button = new Button();
@@ -46,7 +46,7 @@ public class HandUIManager {
             button.setStyle(GREEN_HAND_STYLE);
             button.setManaged(false);
             button.setVisible(false);
-            final int index = i;
+            int index = i;
             button.setOnAction(e -> onCommClicked.accept(index));
             StackPane.setAlignment(button, Pos.CENTER);
             if (commAreas[i] != null) {
@@ -116,16 +116,16 @@ public class HandUIManager {
         }
     }
 
-    public void renderCommunicationUI(GameSession session, int playerCount, Consumer<Integer> onDismiss) {
+    public void renderCommunicationUI(GameSession session, int playerCount, IntConsumer onDismiss) {
         if (session == null || session.getEngine() == null || commActionButtons == null) return;
         Mission mission = session.getEngine().getCurrentMission();
         if (mission == null) return;
 
         List<Player> players = session.getEngine().getPlayerManager().getPlayers();
         boolean phaseIsComm = session.getEngine().getPhase() == GamePhase.COMMUNICATION;
-        boolean phaseIsTricking = session.getEngine().getPhase() == GamePhase.TRICKING;
-        boolean showButtons = phaseIsComm || phaseIsTricking;
+        boolean showButtons = phaseIsComm || session.getEngine().getPhase() == GamePhase.TRICKING;
         int communicatingPlayerIndex = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
+        CommunicationToken[] pending = session.getEngine().getPendingTokens();
 
         for (int i = 0; i < playerCount; i++) {
             if (i >= commAreas.length || commAreas[i] == null) continue;
@@ -139,68 +139,79 @@ public class HandUIManager {
 
             commButton.setManaged(showButtons);
             commButton.setVisible(showButtons);
-            if (showButtons) {
-                boolean alreadyUsed = mission.hasPlayerUsedToken(i);
-                if (alreadyUsed) {
-                    commButton.setStyle("-fx-background-color: red; -fx-cursor: default;");
-                    commButton.setDisable(true);
-                } else if (phaseIsComm) {
-                    if (communicatingPlayerIndex == i) {
-                        commButton.setStyle("-fx-background-color: red; -fx-cursor: hand;");
-                        commButton.setDisable(false);
-                    } else if (communicatingPlayerIndex == -1) {
-                        boolean canComm = !alreadyUsed && !session.getEngine().getCommunicationManager().getValidCommunicationCards(i, mission).isEmpty();
-                        commButton.setStyle(canComm ? GREEN_HAND_STYLE : "-fx-background-color: grey; -fx-cursor: default;");
-                        commButton.setDisable(!canComm);
-                    } else {
-                        commButton.setDisable(true);
-                    }
-                } else {
-                    boolean canComm = !alreadyUsed && !session.getEngine().getCommunicationManager().getValidCommunicationCards(i, mission).isEmpty();
-                    boolean alreadyRequested = session.getEngine().getCommunicationManager().isCommunicationRequested(i);
-                    if (alreadyRequested) {
-                        commButton.setStyle("-fx-background-color: orange; -fx-cursor: hand;");
-                        commButton.setDisable(false);
-                    } else if (canComm) {
-                        commButton.setStyle(GREEN_HAND_STYLE);
-                        commButton.setDisable(false);
-                    } else {
-                        commButton.setStyle("-fx-background-color: grey; -fx-cursor: default;");
-                        commButton.setDisable(true);
-                    }
-                }
-            }
+            updateCommButtonStyle(commButton, i, mission, session, phaseIsComm, communicatingPlayerIndex, showButtons);
 
-            for (CommunicationToken token : mission.getActiveTokens()) {
-                if (token.getPlayerIndex() == i) {
-                    CardView cv = new CardView(token.getCard());
-                    cv.addToken(token.getPosition());
-                    commArea.getChildren().add(cv);
-                }
-            }
+            renderTokensForPlayer(commArea, i, mission, pending);
+        }
 
-            CommunicationToken[] pending = session.getEngine().getPendingTokens();
-            if (pending != null && pending[i] != null) {
-                CardView cv = new CardView(pending[i].getCard());
-                cv.addToken(pending[i].getPosition());
-                cv.setOpacity(0.6);
+        int localIndex = GameApplication.getPlayerInfo() != null ? GameApplication.getPlayerInfo().getIndex() : -1;
+        scheduleDismissTimer(mission, localIndex, onDismiss);
+    }
+
+    private void updateCommButtonStyle(Button btn, int playerIndex, Mission mission, GameSession session,
+                                        boolean phaseIsComm, int communicatingPlayerIndex, boolean showButtons) {
+        if (!showButtons) return;
+        boolean alreadyUsed = mission.hasPlayerUsedToken(playerIndex);
+        if (alreadyUsed) {
+            btn.setStyle("-fx-background-color: red; -fx-cursor: default;");
+            btn.setDisable(true);
+        } else if (phaseIsComm) {
+            if (communicatingPlayerIndex == playerIndex) {
+                btn.setStyle("-fx-background-color: red; -fx-cursor: hand;");
+                btn.setDisable(false);
+            } else if (communicatingPlayerIndex == -1) {
+                boolean canComm = !session.getEngine().getCommunicationManager().getValidCommunicationCards(playerIndex, mission).isEmpty();
+                btn.setStyle(canComm ? GREEN_HAND_STYLE : "-fx-background-color: grey; -fx-cursor: default;");
+                btn.setDisable(!canComm);
+            } else {
+                btn.setDisable(true);
+            }
+        } else {
+            boolean canComm = !session.getEngine().getCommunicationManager().getValidCommunicationCards(playerIndex, mission).isEmpty();
+            boolean alreadyRequested = session.getEngine().getCommunicationManager().isCommunicationRequested(playerIndex);
+            if (alreadyRequested) {
+                btn.setStyle("-fx-background-color: orange; -fx-cursor: hand;");
+                btn.setDisable(false);
+            } else if (canComm) {
+                btn.setStyle(GREEN_HAND_STYLE);
+                btn.setDisable(false);
+            } else {
+                btn.setStyle("-fx-background-color: grey; -fx-cursor: default;");
+                btn.setDisable(true);
+            }
+        }
+    }
+
+    private void renderTokensForPlayer(Pane commArea, int playerIndex, Mission mission, CommunicationToken[] pending) {
+        for (CommunicationToken token : mission.getActiveTokens()) {
+            if (token.getPlayerIndex() == playerIndex) {
+                CardView cv = new CardView(token.getCard());
+                cv.addToken(token.getPosition());
                 commArea.getChildren().add(cv);
             }
         }
 
-        int localIndex = GameApplication.getPlayerInfo() != null ? GameApplication.getPlayerInfo().getIndex() : -1;
-        if (localIndex >= 0 && !dismissTimerScheduled) {
-            for (CommunicationToken token : mission.getActiveTokens()) {
-                if (token.getPlayerIndex() == localIndex) {
-                    dismissTimerScheduled = true;
-                    PauseTransition delay = new PauseTransition(Duration.seconds(5));
-                    delay.setOnFinished(e -> {
-                        onDismiss.accept(localIndex);
-                        dismissTimerScheduled = false;
-                    });
-                    delay.play();
-                    break;
-                }
+        if (pending != null && pending[playerIndex] != null) {
+            CardView cv = new CardView(pending[playerIndex].getCard());
+            cv.addToken(pending[playerIndex].getPosition());
+            cv.setOpacity(0.6);
+            commArea.getChildren().add(cv);
+        }
+    }
+
+    private void scheduleDismissTimer(Mission mission, int localIndex, IntConsumer onDismiss) {
+        if (localIndex < 0 || dismissTimerScheduled) return;
+
+        for (CommunicationToken token : mission.getActiveTokens()) {
+            if (token.getPlayerIndex() == localIndex) {
+                dismissTimerScheduled = true;
+                PauseTransition delay = new PauseTransition(Duration.seconds(5));
+                delay.setOnFinished(e -> {
+                    onDismiss.accept(localIndex);
+                    dismissTimerScheduled = false;
+                });
+                delay.play();
+                break;
             }
         }
     }
