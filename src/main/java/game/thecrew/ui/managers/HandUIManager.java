@@ -8,6 +8,7 @@ import game.thecrew.model.GamePhase;
 import game.thecrew.model.Mission;
 import game.thecrew.model.Player;
 import game.thecrew.ui.CardView;
+import game.thecrew.ui.PlayerUI;
 import javafx.animation.PauseTransition;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -30,10 +31,16 @@ public class HandUIManager {
 
     private static final String GREEN_HAND_STYLE = "-fx-background-color: green; -fx-cursor: hand;";
 
-    public HandUIManager(FlowPane hand0, FlowPane hand1, FlowPane hand2, FlowPane hand3, FlowPane hand4,
-                         StackPane commArea0, StackPane commArea1, StackPane commArea2, StackPane commArea3, StackPane commArea4) {
-        hands = new FlowPane[]{hand0, hand1, hand2, hand3, hand4};
-        commAreas = new StackPane[]{commArea0, commArea1, commArea2, commArea3, commArea4};
+    public HandUIManager(List<PlayerUI> playerUIs) {
+        int size = playerUIs.size();
+        this.hands = new FlowPane[size];
+        this.commAreas = new StackPane[size];
+
+        for (int i = 0; i < size; i++) {
+            PlayerUI ui = playerUIs.get(i);
+            this.hands[i] = ui.getHand();
+            this.commAreas[i] = (StackPane) ui.getCommunicationArea();
+        }
     }
 
     public void initCommButtons(int playerCount, IntConsumer onCommClicked) {
@@ -78,40 +85,59 @@ public class HandUIManager {
         handPane.getChildren().clear();
 
         boolean isLocalPlayer = GameApplication.getPlayerInfo() != null && playerIndex == GameApplication.getPlayerInfo().getIndex();
-        boolean isMyTurn = isLocalPlayer && session.getEngine().getPlayerManager().getCurrentPlayerIndex() == GameApplication.getPlayerInfo().getIndex();
 
         if (isLocalPlayer) {
-            int communicatingPlayerIndex = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
-            List<Card> validCommCards = (communicatingPlayerIndex == playerIndex)
-                    ? session.getEngine().getCommunicationManager().getValidCommunicationCards(playerIndex, session.getEngine().getCurrentMission())
-                    : null;
-
-            for (Card card : player.getHand()) {
-                CardView cardView = new CardView(card);
-
-                GamePhase currentPhase = session.getEngine().getPhase();
-                if (currentPhase == GamePhase.COMMUNICATION && communicatingPlayerIndex == playerIndex) {
-                    if (validCommCards != null && validCommCards.contains(card)) {
-                        Card clickedCard = card;
-                        cardView.setStyle("-fx-border-color: yellow; -fx-border-width: 2;");
-                        cardView.setOnMouseClicked(e -> onCommunicationCardSelected.accept(playerIndex, clickedCard));
-                    }
-                } else if (isMyTurn && currentPhase == GamePhase.TRICKING) {
-                    if (validCommCards != null && validCommCards.contains(card)) {
-                        Card clickedCard = card;
-                        cardView.setStyle("-fx-border-color: yellow; -fx-border-width: 2;");
-                        cardView.setOnMouseClicked(e -> onCommunicationCardSelected.accept(playerIndex, clickedCard));
-                    } else if (communicatingPlayerIndex == -1) {
-                        Card clickedCard = card;
-                        cardView.setOnMouseClicked(e -> onCardClicked.accept(playerIndex, clickedCard));
-                    }
-                }
-
-                handPane.getChildren().add(cardView);
-            }
+            renderLocalHand(session, playerIndex, handPane, player, onCardClicked, onCommunicationCardSelected);
         } else {
-            for (int i = 0; i < player.getHand().size(); i++) {
-                handPane.getChildren().add(CardView.createBack());
+            renderRemoteHand(handPane, player);
+        }
+    }
+
+    private void renderLocalHand(GameSession session, int playerIndex, FlowPane handPane, Player player,
+                                  BiConsumer<Integer, Card> onCardClicked,
+                                  BiConsumer<Integer, Card> onCommunicationCardSelected) {
+        int communicatingPlayerIndex = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
+        List<Card> validCommCards = (communicatingPlayerIndex == playerIndex)
+                ? session.getEngine().getCommunicationManager().getValidCommunicationCards(playerIndex, session.getEngine().getCurrentMission())
+                : null;
+
+        for (Card card : player.getHand()) {
+            CardView cardView = new CardView(card);
+            setupCardInteraction(cardView, card, playerIndex, session, validCommCards, onCardClicked, onCommunicationCardSelected);
+            handPane.getChildren().add(cardView);
+        }
+    }
+
+    private void renderRemoteHand(FlowPane handPane, Player player) {
+        for (int i = 0; i < player.getHand().size(); i++) {
+            handPane.getChildren().add(CardView.createBack());
+        }
+    }
+
+    private void setupCardInteraction(CardView cardView, Card card, int playerIndex, GameSession session,
+                                       List<Card> validCommCards,
+                                       BiConsumer<Integer, Card> onCardClicked,
+                                       BiConsumer<Integer, Card> onCommunicationCardSelected) {
+        GamePhase currentPhase = session.getEngine().getPhase();
+        int communicatingPlayerIndex = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
+        boolean isMyTurn = GameApplication.getPlayerInfo() != null
+                && playerIndex == GameApplication.getPlayerInfo().getIndex()
+                && session.getEngine().getPlayerManager().getCurrentPlayerIndex() == GameApplication.getPlayerInfo().getIndex();
+
+        if (currentPhase == GamePhase.COMMUNICATION && communicatingPlayerIndex == playerIndex) {
+            if (validCommCards != null && validCommCards.contains(card)) {
+                Card clickedCard = card;
+                cardView.setStyle("-fx-border-color: yellow; -fx-border-width: 2;");
+                cardView.setOnMouseClicked(e -> onCommunicationCardSelected.accept(playerIndex, clickedCard));
+            }
+        } else if (isMyTurn && currentPhase == GamePhase.TRICKING) {
+            if (validCommCards != null && validCommCards.contains(card)) {
+                Card clickedCard = card;
+                cardView.setStyle("-fx-border-color: yellow; -fx-border-width: 2;");
+                cardView.setOnMouseClicked(e -> onCommunicationCardSelected.accept(playerIndex, clickedCard));
+            } else if (communicatingPlayerIndex == -1) {
+                Card clickedCard = card;
+                cardView.setOnMouseClicked(e -> onCardClicked.accept(playerIndex, clickedCard));
             }
         }
     }
@@ -128,20 +154,19 @@ public class HandUIManager {
         CommunicationToken[] pending = session.getEngine().getPendingTokens();
 
         for (int i = 0; i < playerCount; i++) {
-            if (i >= commAreas.length || commAreas[i] == null) continue;
-            Pane commArea = commAreas[i];
-            commArea.getChildren().clear();
+            if (i < commAreas.length && commAreas[i] != null && i < players.size() && i < commActionButtons.length && commActionButtons[i] != null) {
+                Pane commArea = commAreas[i];
+                commArea.getChildren().clear();
 
-            if (i >= players.size() || i >= commActionButtons.length) continue;
-            Button commButton = commActionButtons[i];
-            if (commButton == null) continue;
-            commArea.getChildren().add(commButton);
+                Button commButton = commActionButtons[i];
+                commArea.getChildren().add(commButton);
 
-            commButton.setManaged(showButtons);
-            commButton.setVisible(showButtons);
-            updateCommButtonStyle(commButton, i, mission, session, phaseIsComm, communicatingPlayerIndex, showButtons);
+                commButton.setManaged(showButtons);
+                commButton.setVisible(showButtons);
+                updateCommButtonStyle(commButton, i, mission, session, phaseIsComm, communicatingPlayerIndex, showButtons);
 
-            renderTokensForPlayer(commArea, i, mission, pending);
+                renderTokensForPlayer(commArea, i, mission, pending);
+            }
         }
 
         int localIndex = GameApplication.getPlayerInfo() != null ? GameApplication.getPlayerInfo().getIndex() : -1;

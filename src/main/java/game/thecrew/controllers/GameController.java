@@ -108,10 +108,7 @@ public class GameController implements MissionClientCallback {
             if (session != null) {
                 initPlayerUIs();
 
-                handUIManager = new HandUIManager(
-                    hand0, hand1, hand2, hand3, hand4,
-                    commArea0, commArea1, commArea2, commArea3, commArea4
-                );
+                handUIManager = new HandUIManager(playerUIs);
                 trickUIManager = new TrickUIManager(slot0, slot1, slot2, slot3, slot4);
                 taskUIManager = new TaskUIManager(
                     availableTasksBox,
