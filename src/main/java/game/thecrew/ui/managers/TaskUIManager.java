@@ -63,4 +63,13 @@ public class TaskUIManager {
     private int playerIndexFromTurn(GameSession session) {
         return session.getEngine().getPlayerManager().getCurrentPlayerIndex();
     }
+    public void setupVisibility(int playerCount) {
+        for (int i = 0; i < taskHands.length; i++) {
+            boolean active = i < playerCount;
+            if (taskHands[i] != null) {
+                taskHands[i].setVisible(active);
+                taskHands[i].setManaged(active);
+            }
+        }
+    }
 }

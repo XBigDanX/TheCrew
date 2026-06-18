@@ -49,7 +49,6 @@ public class GameController implements MissionClientCallback {
     public int getPlayerCount() { return playerCount; }
     public void setPlayerCount(int playerCount) { this.playerCount = playerCount; }
     public TrickUIManager getTrickUIManager() { return trickUIManager; }
-    public HandUIManager getHandUIManager() { return handUIManager; }
     public List<PlayerUI> getPlayerUIs() { return playerUIs; }
 
     @FXML
@@ -104,35 +103,10 @@ public class GameController implements MissionClientCallback {
     }
 
     public void setupPlayerViews() {
-        int myIdx = GameApplication.getPlayerInfo() != null
-            ? GameApplication.getPlayerInfo().getIndex() : -1;
-
-        for (int i = 0; i < playerUIs.size(); i++) {
-            boolean active = i < playerCount;
-            PlayerUI pui = playerUIs.get(i);
-
-            if (pui.getSlot() != null) {
-                pui.getSlot().setVisible(active);
-                pui.getSlot().setManaged(active);
-            }
-            if (pui.getTaskHand() != null) {
-                pui.getTaskHand().setVisible(active);
-                pui.getTaskHand().setManaged(active);
-            }
-            if (pui.getCommunicationArea() != null) {
-                pui.getCommunicationArea().setVisible(active);
-                pui.getCommunicationArea().setManaged(active);
-            }
-            if (i < infoLabels.length && infoLabels[i] != null) {
-                infoLabels[i].setVisible(active);
-                infoLabels[i].setManaged(active);
-            }
-            if (pui.getHand() != null) {
-                boolean mine = i == myIdx;
-                pui.getHand().setVisible(active && mine);
-                pui.getHand().setManaged(active && mine);
-            }
-        }
+        handUIManager.setupVisibility(playerCount);
+        trickUIManager.setupVisibility(playerCount);
+        taskUIManager.setupVisibility(playerCount);
+        playerInfoManager.setupVisibility(playerCount);
     }
 
     public void refreshUI() {

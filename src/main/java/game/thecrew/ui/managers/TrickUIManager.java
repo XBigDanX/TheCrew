@@ -147,4 +147,13 @@ public class TrickUIManager {
 
         parallel.play();
     }
+    public void setupVisibility(int playerCount) {
+        for (int i = 0; i < slots.length; i++) {
+            boolean active = i < playerCount;
+            if (slots[i] != null) {
+                slots[i].setVisible(active);
+                slots[i].setManaged(active);
+            }
+        }
+    }
 }

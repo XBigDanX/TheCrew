@@ -82,57 +82,71 @@ public class GameNetworkClient {
 
     private void handleGameState(GameController controller, GameState receivedState) {
         Platform.runLater(() -> {
-            if (controller.getSession() == null) {
-                LOGGER.log(Level.INFO, "[DEBUG_LOG] Initializing session from received GameState for playerCount: {0}", controller.getPlayerCount());
-                controller.setSession(new GameSession(controller.getPlayerCount()));
-                controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
-                controller.initPlayerUIs();
-                controller.setupPlayerViews();
-                controller.lobbyOverlay.setManaged(false);
-                controller.lobbyOverlay.setVisible(false);
-            } else {
-                controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
-            }
-            LOGGER.log(Level.INFO, "[DEBUG_LOG] Restoring GameState.");
+            initializeSessionIfNeeded(controller);
 
             List<TrickPlay> oldPlays = new ArrayList<>(controller.getSession().getEngine().getTrickManager().getCurrentTrick().getPlays());
             controller.getSession().getEngine().restoreState(receivedState);
             List<TrickPlay> newPlays = controller.getSession().getEngine().getTrickManager().getCurrentTrick().getPlays();
 
-            boolean hadNewPlay = false;
-            if (newPlays.size() > oldPlays.size()) {
-                hadNewPlay = true;
-                controller.refreshUI();
-                for (int i = oldPlays.size(); i < newPlays.size(); i++) {
-                    TrickPlay play = newPlays.get(i);
-                    Pane sourcePane = controller.getPlayerUIs().get(play.getPlayerIndex()).getHand();
-                    controller.getTrickUIManager().animateCardToSlot(play.getCard(), play.getPlayerIndex(), sourcePane);
-                }
+            boolean hadNewPlay = newPlays.size() > oldPlays.size();
+            if (hadNewPlay) {
+                animateNewPlays(controller, oldPlays, newPlays);
             }
 
             if (controller.getSession().getEngine().getTrickManager().isComplete(controller.getPlayerCount())) {
-                if (!hadNewPlay) {
-                    controller.renderCurrentTrick();
-                }
-                controller.renderAllHands();
-                controller.updateInfoLabels();
-                PauseTransition delay = new PauseTransition(Duration.millis(hadNewPlay ? 500 : 100));
-                delay.setOnFinished(e -> {
-                    int winnerIndex = controller.getSession().getEngine().getTrickManager().getWinner();
-                    controller.getTrickUIManager().animateTrickEnd(winnerIndex, () -> {
-                        controller.getSession().getEngine().resetTrick();
-                        controller.refreshUI();
-                    });
-                });
-                delay.play();
+                handleTrickCompletion(controller, hadNewPlay);
             } else {
-                controller.renderAllHands();
-                controller.updateInfoLabels();
-                if (!hadNewPlay) {
-                    controller.refreshUI();
-                }
+                updateStandardUI(controller, hadNewPlay);
             }
         });
+    }
+
+    private void initializeSessionIfNeeded(GameController controller) {
+        if (controller.getSession() == null) {
+            LOGGER.log(Level.INFO, "[DEBUG_LOG] Initializing session from received GameState for playerCount: {0}", controller.getPlayerCount());
+            controller.setSession(new GameSession(controller.getPlayerCount()));
+            controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
+            controller.initPlayerUIs();
+            controller.setupPlayerViews();
+            controller.lobbyOverlay.setManaged(false);
+            controller.lobbyOverlay.setVisible(false);
+        } else {
+            controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
+        }
+    }
+
+    private void animateNewPlays(GameController controller, List<TrickPlay> oldPlays, List<TrickPlay> newPlays) {
+        controller.refreshUI();
+        for (int i = oldPlays.size(); i < newPlays.size(); i++) {
+            TrickPlay play = newPlays.get(i);
+            Pane sourcePane = controller.getPlayerUIs().get(play.getPlayerIndex()).getHand();
+            controller.getTrickUIManager().animateCardToSlot(play.getCard(), play.getPlayerIndex(), sourcePane);
+        }
+    }
+
+    private void handleTrickCompletion(GameController controller, boolean hadNewPlay) {
+        if (!hadNewPlay) {
+            controller.renderCurrentTrick();
+        }
+        controller.renderAllHands();
+        controller.updateInfoLabels();
+        PauseTransition delay = new PauseTransition(Duration.millis(hadNewPlay ? 800 : 100));
+        delay.setOnFinished(e -> {
+            int winnerIndex = controller.getSession().getEngine().getTrickManager().getWinner();
+            controller.getTrickUIManager().animateTrickEnd(winnerIndex, () -> {
+                controller.getSession().getEngine().resetTrick();
+                controller.refreshUI();
+            });
+        });
+        delay.play();
+    }
+
+    private void updateStandardUI(GameController controller, boolean hadNewPlay) {
+        controller.renderAllHands();
+        controller.updateInfoLabels();
+        if (!hadNewPlay) {
+            controller.refreshUI();
+        }
     }
 
     private void handleStringMessage(GameController controller, String msg) {

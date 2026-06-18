@@ -173,7 +173,7 @@ public class HandUIManager {
         scheduleDismissTimer(mission, localIndex, actionSender);
     }
 
-    private void updateCommButtonStyle(Button btn, int playerIndex, Mission mission, GameSession session,
+    public void updateCommButtonStyle(Button btn, int playerIndex, Mission mission, GameSession session,
                                         boolean phaseIsComm, int communicatingPlayerIndex, boolean showButtons, TrickUIManager trickUIManager) {
         if (!trickUIManager.isTrickPaneEmpty(session)) {
             btn.setDisable(true);
@@ -182,8 +182,12 @@ public class HandUIManager {
         int localPlayerIndex = (GameApplication.getPlayerInfo() != null) ? GameApplication.getPlayerInfo().getIndex() : -1;
         if (playerIndex != localPlayerIndex) {
             btn.setDisable(true);
+            return;
         }
-        if (!showButtons) return;
+        if (!showButtons) {
+            btn.setDisable(true);
+            return;
+        }
         boolean alreadyUsed = mission.hasPlayerUsedToken(playerIndex);
         if (alreadyUsed) {
             btn.setStyle("-fx-background-color: red; -fx-cursor: default;");
@@ -191,11 +195,11 @@ public class HandUIManager {
         } else if (phaseIsComm) {
             if (communicatingPlayerIndex == playerIndex) {
                 btn.setStyle("-fx-background-color: red; -fx-cursor: hand;");
-                if (playerIndex == localPlayerIndex) btn.setDisable(false);
+                btn.setDisable(false);
             } else if (communicatingPlayerIndex == -1) {
                 boolean canComm = !session.getEngine().getCommunicationManager().getValidCommunicationCards(playerIndex, mission).isEmpty();
                 btn.setStyle(canComm ? GREEN_HAND_STYLE : "-fx-background-color: grey; -fx-cursor: default;");
-                btn.setDisable(playerIndex != localPlayerIndex || !canComm);
+                btn.setDisable(!canComm);
             } else {
                 btn.setDisable(true);
             }
@@ -204,10 +208,10 @@ public class HandUIManager {
             boolean alreadyRequested = session.getEngine().getCommunicationManager().isCommunicationRequested(playerIndex);
             if (alreadyRequested) {
                 btn.setStyle("-fx-background-color: orange; -fx-cursor: hand;");
-                if (playerIndex == localPlayerIndex) btn.setDisable(false);
+                btn.setDisable(false);
             } else if (canComm) {
                 btn.setStyle(GREEN_HAND_STYLE);
-                if (playerIndex == localPlayerIndex) btn.setDisable(false);
+                btn.setDisable(false);
             } else {
                 btn.setStyle("-fx-background-color: grey; -fx-cursor: default;");
                 btn.setDisable(true);
@@ -232,6 +236,22 @@ public class HandUIManager {
         }
     }
 
+    public void setupVisibility(int playerCount) {
+        int myIdx = GameApplication.getPlayerInfo() != null ? GameApplication.getPlayerInfo().getIndex() : -1;
+        for (int i = 0; i < hands.length; i++) {
+            boolean active = i < playerCount;
+            boolean isMine = i == myIdx;
+            if (hands[i] != null) {
+                hands[i].setVisible(active && isMine);
+                hands[i].setManaged(active && isMine);
+            }
+            if (commAreas[i] != null) {
+                commAreas[i].setVisible(active);
+                commAreas[i].setManaged(active);
+            }
+        }
+    }
+
     private void scheduleDismissTimer(Mission mission, int localIndex, NetworkActionSender actionSender) {
         if (localIndex < 0 || dismissTimerScheduled) return;
 
@@ -248,5 +268,4 @@ public class HandUIManager {
             }
         }
     }
-
 }

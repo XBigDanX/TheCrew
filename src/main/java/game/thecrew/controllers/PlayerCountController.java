@@ -3,7 +3,6 @@ package game.thecrew.controllers;
 import game.thecrew.network.rmi.MissionLogServer;
 import game.thecrew.network.rmi.MissionServiceImpl;
 import game.thecrew.thread.NetworkThread;
-import game.thecrew.utils.NetworkUtils;
 import javafx.fxml.FXML;
 import java.util.logging.Level;
 import java.util.logging.Logger;

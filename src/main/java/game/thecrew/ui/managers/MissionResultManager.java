@@ -17,6 +17,8 @@ public class MissionResultManager {
     private final Button nextMissionButton;
     private final Button retryButton;
 
+    private PauseTransition currentDelay;
+
     public MissionResultManager(StackPane missionResultOverlay, Label resultTitleLabel,
                                  Label resultMessageLabel, Button nextMissionButton,
                                  Button retryButton) {
@@ -30,30 +32,41 @@ public class MissionResultManager {
     public void handleMissionEnd(GameSession session) {
         if (session == null || session.getEngine() == null) return;
 
-        boolean complete = session.getEngine().getPhase() == GamePhase.MISSION_COMPLETE;
+        GamePhase phase = session.getEngine().getPhase();
+        boolean finished = (phase == GamePhase.MISSION_COMPLETE || phase == GamePhase.GAME_OVER);
 
-        if (!complete) {
+        if (!finished) {
+            if (currentDelay != null) {
+                currentDelay.stop();
+                currentDelay = null;
+            }
             missionResultOverlay.setVisible(false);
             missionResultOverlay.setManaged(false);
             return;
         }
 
-        // Add 2 seconds delay before showing the overlay
-        PauseTransition delay = new PauseTransition(Duration.seconds(2));
-        delay.setOnFinished(e -> {
-            missionResultOverlay.setVisible(true);
-            missionResultOverlay.setManaged(true);
+        if (currentDelay != null) return; // Delay already in progress
 
-            boolean success = session.getEngine().getCurrentMission().getStatus() == MissionStatus.SUCCESS;
+        boolean success = session.getEngine().getCurrentMission().getStatus() == MissionStatus.SUCCESS;
+        String title = success ? "Mission Complete!" : "Mission Failed";
+        String message = success ? "All tasks were completed." : "Not all tasks were completed.";
 
-            resultTitleLabel.setText(success ? "Mission Complete!" : "Mission Failed");
-            resultMessageLabel.setText(success ? "All tasks were completed." : "Not all tasks were completed.");
-
-            nextMissionButton.setVisible(success);
-            nextMissionButton.setManaged(success);
-            retryButton.setVisible(!success);
-            retryButton.setManaged(!success);
+        currentDelay = new PauseTransition(Duration.seconds(2));
+        currentDelay.setOnFinished(e -> {
+            currentDelay = null;
+            // Final check before showing
+            GamePhase currentPhase = session.getEngine().getPhase();
+            if (currentPhase == GamePhase.MISSION_COMPLETE || currentPhase == GamePhase.GAME_OVER) {
+                missionResultOverlay.setVisible(true);
+                missionResultOverlay.setManaged(true);
+                resultTitleLabel.setText(title);
+                resultMessageLabel.setText(message);
+                nextMissionButton.setVisible(success);
+                nextMissionButton.setManaged(success);
+                retryButton.setVisible(!success);
+                retryButton.setManaged(!success);
+            }
         });
-        delay.play();
+        currentDelay.play();
     }
 }

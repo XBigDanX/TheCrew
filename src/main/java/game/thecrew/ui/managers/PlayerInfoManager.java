@@ -50,4 +50,13 @@ public class PlayerInfoManager {
             + "  Cards: " + player.getHand().size()
             + suffix);
     }
+    public void setupVisibility(int playerCount) {
+        for (int i = 0; i < infoLabels.length; i++) {
+            boolean active = i < playerCount;
+            if (infoLabels[i] != null) {
+                infoLabels[i].setVisible(active);
+                infoLabels[i].setManaged(active);
+            }
+        }
+    }
 }
