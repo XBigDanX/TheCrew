@@ -12,7 +12,6 @@ import game.thecrew.network.NetworkActionSender;
 import game.thecrew.ui.CardView;
 import game.thecrew.ui.PlayerUI;
 import javafx.animation.PauseTransition;
-import javafx.animation.SequentialTransition;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.layout.FlowPane;
@@ -143,7 +142,7 @@ public class HandUIManager {
         }
     }
 
-    public void renderCommunicationUI(GameSession session, int playerCount, NetworkActionSender actionSender) {
+    public void renderCommunicationUI(GameSession session, int playerCount, NetworkActionSender actionSender, TrickUIManager trickUIManager) {
         if (session == null || session.getEngine() == null || commActionButtons == null) return;
         Mission mission = session.getEngine().getCurrentMission();
         if (mission == null) return;
@@ -164,7 +163,7 @@ public class HandUIManager {
 
                 commButton.setManaged(showButtons);
                 commButton.setVisible(showButtons);
-                updateCommButtonStyle(commButton, i, mission, session, phaseIsComm, communicatingPlayerIndex, showButtons);
+                updateCommButtonStyle(commButton, i, mission, session, phaseIsComm, communicatingPlayerIndex, showButtons, trickUIManager);
 
                 renderTokensForPlayer(commArea, i, mission, pending);
             }
@@ -175,7 +174,15 @@ public class HandUIManager {
     }
 
     private void updateCommButtonStyle(Button btn, int playerIndex, Mission mission, GameSession session,
-                                        boolean phaseIsComm, int communicatingPlayerIndex, boolean showButtons) {
+                                        boolean phaseIsComm, int communicatingPlayerIndex, boolean showButtons, TrickUIManager trickUIManager) {
+        if (!trickUIManager.isTrickPaneEmpty(session)) {
+            btn.setDisable(true);
+            return;
+        }
+        int localPlayerIndex = (GameApplication.getPlayerInfo() != null) ? GameApplication.getPlayerInfo().getIndex() : -1;
+        if (playerIndex != localPlayerIndex) {
+            btn.setDisable(true);
+        }
         if (!showButtons) return;
         boolean alreadyUsed = mission.hasPlayerUsedToken(playerIndex);
         if (alreadyUsed) {
@@ -184,11 +191,11 @@ public class HandUIManager {
         } else if (phaseIsComm) {
             if (communicatingPlayerIndex == playerIndex) {
                 btn.setStyle("-fx-background-color: red; -fx-cursor: hand;");
-                btn.setDisable(false);
+                if (playerIndex == localPlayerIndex) btn.setDisable(false);
             } else if (communicatingPlayerIndex == -1) {
                 boolean canComm = !session.getEngine().getCommunicationManager().getValidCommunicationCards(playerIndex, mission).isEmpty();
                 btn.setStyle(canComm ? GREEN_HAND_STYLE : "-fx-background-color: grey; -fx-cursor: default;");
-                btn.setDisable(!canComm);
+                btn.setDisable(playerIndex != localPlayerIndex || !canComm);
             } else {
                 btn.setDisable(true);
             }
@@ -197,10 +204,10 @@ public class HandUIManager {
             boolean alreadyRequested = session.getEngine().getCommunicationManager().isCommunicationRequested(playerIndex);
             if (alreadyRequested) {
                 btn.setStyle("-fx-background-color: orange; -fx-cursor: hand;");
-                btn.setDisable(false);
+                if (playerIndex == localPlayerIndex) btn.setDisable(false);
             } else if (canComm) {
                 btn.setStyle(GREEN_HAND_STYLE);
-                btn.setDisable(false);
+                if (playerIndex == localPlayerIndex) btn.setDisable(false);
             } else {
                 btn.setStyle("-fx-background-color: grey; -fx-cursor: default;");
                 btn.setDisable(true);
@@ -242,32 +249,4 @@ public class HandUIManager {
         }
     }
 
-    public void processCommunicationQueue(List<CommunicationToken> tokens, Pane root, Runnable callback) {
-        if (tokens == null || tokens.isEmpty()) {
-            if (callback != null) callback.run();
-            return;
-        }
-
-        SequentialTransition sequence = new SequentialTransition();
-
-        for (CommunicationToken token : tokens) {
-            final CommunicationToken t = token;
-            PauseTransition pause = new PauseTransition(Duration.seconds(1.5));
-            pause.setOnFinished(e -> {
-                int idx = t.getPlayerIndex();
-                if (idx < commAreas.length && commAreas[idx] != null) {
-                    CardView cv = new CardView(t.getCard());
-                    cv.addToken(t.getPosition());
-                    commAreas[idx].getChildren().add(cv);
-                }
-            });
-            sequence.getChildren().add(pause);
-        }
-
-        sequence.setOnFinished(e -> {
-            if (callback != null) callback.run();
-        });
-
-        sequence.play();
-    }
 }

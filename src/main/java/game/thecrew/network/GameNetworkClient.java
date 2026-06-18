@@ -2,7 +2,6 @@ package game.thecrew.network;
 
 import game.thecrew.GameSession;
 import game.thecrew.controllers.GameController;
-import game.thecrew.model.CommunicationToken;
 import game.thecrew.model.GameAction;
 import game.thecrew.model.GameState;
 import game.thecrew.model.TrickPlay;
@@ -96,56 +95,20 @@ public class GameNetworkClient {
             }
             LOGGER.log(Level.INFO, "[DEBUG_LOG] Restoring GameState.");
 
-            List<CommunicationToken> oldTokens = new ArrayList<>();
-            if (controller.getSession().getEngine().getCurrentMission() != null) {
-                oldTokens.addAll(controller.getSession().getEngine().getCurrentMission().getActiveTokens());
-            }
-
             List<TrickPlay> oldPlays = new ArrayList<>(controller.getSession().getEngine().getTrickManager().getCurrentTrick().getPlays());
             controller.getSession().getEngine().restoreState(receivedState);
             List<TrickPlay> newPlays = controller.getSession().getEngine().getTrickManager().getCurrentTrick().getPlays();
 
-            List<CommunicationToken> newTokens = new ArrayList<>();
-            if (controller.getSession().getEngine().getCurrentMission() != null) {
-                List<CommunicationToken> activeTokens = controller.getSession().getEngine().getCurrentMission().getActiveTokens();
-                for (CommunicationToken token : activeTokens) {
-                    boolean isNew = true;
-                    for (CommunicationToken old : oldTokens) {
-                        if (token.getPlayerIndex() == old.getPlayerIndex()
-                                && token.getPosition() == old.getPosition()
-                                && token.getCard().equals(old.getCard())) {
-                            isNew = false;
-                            break;
-                        }
-                    }
-                    if (isNew) {
-                        newTokens.add(token);
-                    }
-                }
-            }
-
-            if (!newTokens.isEmpty() && controller.getSession().getEngine().getCurrentMission() != null) {
-                controller.getSession().getEngine().getCurrentMission().getActiveTokens().removeAll(newTokens);
-            }
-
             boolean hadNewPlay = false;
             if (newPlays.size() > oldPlays.size()) {
                 hadNewPlay = true;
+                controller.refreshUI();
                 for (int i = oldPlays.size(); i < newPlays.size(); i++) {
                     TrickPlay play = newPlays.get(i);
                     Pane sourcePane = controller.getPlayerUIs().get(play.getPlayerIndex()).getHand();
                     controller.getTrickUIManager().animateCardToSlot(play.getCard(), play.getPlayerIndex(), sourcePane);
                 }
             }
-
-            Runnable finalRefresh = () -> {
-                if (!newTokens.isEmpty() && controller.getSession().getEngine().getCurrentMission() != null) {
-                    controller.getSession().getEngine().getCurrentMission().getActiveTokens().addAll(newTokens);
-                }
-                controller.refreshUI();
-            };
-
-            boolean hasNewTokens = !newTokens.isEmpty() && controller.getHandUIManager() != null;
 
             if (controller.getSession().getEngine().getTrickManager().isComplete(controller.getPlayerCount())) {
                 if (!hadNewPlay) {
@@ -158,12 +121,7 @@ public class GameNetworkClient {
                     int winnerIndex = controller.getSession().getEngine().getTrickManager().getWinner();
                     controller.getTrickUIManager().animateTrickEnd(winnerIndex, () -> {
                         controller.getSession().getEngine().resetTrick();
-                        if (hasNewTokens) {
-                            Pane root = controller.getPlayerUIs().get(0).getHand();
-                            controller.getHandUIManager().processCommunicationQueue(newTokens, root, finalRefresh);
-                        } else {
-                            finalRefresh.run();
-                        }
+                        controller.refreshUI();
                     });
                 });
                 delay.play();
@@ -171,12 +129,7 @@ public class GameNetworkClient {
                 controller.renderAllHands();
                 controller.updateInfoLabels();
                 if (!hadNewPlay) {
-                    if (hasNewTokens) {
-                        Pane root = controller.getPlayerUIs().get(0).getHand();
-                        controller.getHandUIManager().processCommunicationQueue(newTokens, root, finalRefresh);
-                    } else {
-                        finalRefresh.run();
-                    }
+                    controller.refreshUI();
                 }
             }
         });

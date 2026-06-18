@@ -31,6 +31,21 @@ public class TrickUIManager {
         }
     }
 
+    public boolean isTrickPaneEmpty(GameSession session) {
+        for (Pane slot : slots) {
+            if (slot != null && !slot.getChildren().isEmpty()) {
+                return false;
+            }
+        }
+        if (session != null && session.getEngine() != null
+                && session.getEngine().getTrickManager() != null
+                && session.getEngine().getTrickManager().getCurrentTrick() != null
+                && !session.getEngine().getTrickManager().getCurrentTrick().getPlays().isEmpty()) {
+            return false;
+        }
+        return true;
+    }
+
     public void renderCurrentTrick(GameSession session) {
         if (session == null || session.getEngine() == null) return;
 

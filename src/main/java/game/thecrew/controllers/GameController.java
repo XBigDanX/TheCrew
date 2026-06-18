@@ -141,7 +141,7 @@ public class GameController implements MissionClientCallback {
         handUIManager.renderAllHands(session, playerCount, actionSender);
         taskUIManager.renderTasks(session, actionSender);
         taskUIManager.updateTaskUI(session);
-        handUIManager.renderCommunicationUI(session, playerCount, actionSender);
+        handUIManager.renderCommunicationUI(session, playerCount, actionSender, trickUIManager);
         playerInfoManager.updateInfoLabels(session, playerCount);
         missionInfoManager.updateMissionLabels(session);
         missionInfoManager.updateCurrentPlayerLabel(session);
