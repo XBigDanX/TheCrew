@@ -3,9 +3,11 @@ package game.thecrew.ui.managers;
 import game.thecrew.GameSession;
 import game.thecrew.model.GamePhase;
 import game.thecrew.model.MissionStatus;
+import javafx.animation.PauseTransition;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
+import javafx.util.Duration;
 
 public class MissionResultManager {
 
@@ -30,19 +32,28 @@ public class MissionResultManager {
 
         boolean complete = session.getEngine().getPhase() == GamePhase.MISSION_COMPLETE;
 
-        missionResultOverlay.setVisible(complete);
-        missionResultOverlay.setManaged(complete);
+        if (!complete) {
+            missionResultOverlay.setVisible(false);
+            missionResultOverlay.setManaged(false);
+            return;
+        }
 
-        if (!complete) return;
+        // Add 2 seconds delay before showing the overlay
+        PauseTransition delay = new PauseTransition(Duration.seconds(2));
+        delay.setOnFinished(e -> {
+            missionResultOverlay.setVisible(true);
+            missionResultOverlay.setManaged(true);
 
-        boolean success = session.getEngine().getCurrentMission().getStatus() == MissionStatus.SUCCESS;
+            boolean success = session.getEngine().getCurrentMission().getStatus() == MissionStatus.SUCCESS;
 
-        resultTitleLabel.setText(success ? "Mission Complete!" : "Mission Failed");
-        resultMessageLabel.setText(success ? "All tasks were completed." : "Not all tasks were completed.");
+            resultTitleLabel.setText(success ? "Mission Complete!" : "Mission Failed");
+            resultMessageLabel.setText(success ? "All tasks were completed." : "Not all tasks were completed.");
 
-        nextMissionButton.setVisible(success);
-        nextMissionButton.setManaged(success);
-        retryButton.setVisible(!success);
-        retryButton.setManaged(!success);
+            nextMissionButton.setVisible(success);
+            nextMissionButton.setManaged(success);
+            retryButton.setVisible(!success);
+            retryButton.setManaged(!success);
+        });
+        delay.play();
     }
 }
