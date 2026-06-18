@@ -12,9 +12,12 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class GameNetworkClient {
 
+    private static final Logger LOGGER = Logger.getLogger(GameNetworkClient.class.getName());
     private static Socket pendingSocket;
     private static ObjectInputStream pendingInputStream;
 
@@ -34,7 +37,7 @@ public class GameNetworkClient {
             try {
                 this.networkOutputStream = new ObjectOutputStream(networkSocket.getOutputStream());
             } catch (IOException e) {
-                e.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to create output stream", e);
             }
         }
     }
@@ -53,10 +56,10 @@ public class GameNetworkClient {
 
         Thread listener = new Thread(() -> {
             try {
-                System.out.println("[DEBUG_LOG] Client lobby listener started.");
+                LOGGER.log(Level.INFO, "[DEBUG_LOG] Client lobby listener started.");
                 while (true) {
                     Object obj = networkInputStream.readObject();
-                    System.out.println("[DEBUG_LOG] Received object: " + (obj == null ? "null" : obj.getClass().getName()) + " - " + obj);
+                    LOGGER.log(Level.FINE, "[DEBUG_LOG] Received object: {0} - {1}", new Object[]{obj == null ? "null" : obj.getClass().getName(), obj});
                     if (obj instanceof GameState) {
                         handleGameState(controller, (GameState) obj);
                     } else if (obj instanceof String) {
@@ -64,8 +67,8 @@ public class GameNetworkClient {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("[DEBUG_LOG] Error in client lobby listener: " + e.getMessage());
-                e.printStackTrace();
+                LOGGER.log(Level.WARNING, "[DEBUG_LOG] Error in client lobby listener: {0}", e.getMessage());
+                LOGGER.log(Level.FINE, "[DEBUG_LOG] Error in client lobby listener", e);
             }
         });
         listener.setDaemon(true);
@@ -75,7 +78,7 @@ public class GameNetworkClient {
     private void handleGameState(GameController controller, GameState receivedState) {
         Platform.runLater(() -> {
             if (controller.getSession() == null) {
-                System.out.println("[DEBUG_LOG] Initializing session from received GameState for playerCount: " + controller.getPlayerCount());
+                LOGGER.log(Level.INFO, "[DEBUG_LOG] Initializing session from received GameState for playerCount: {0}", controller.getPlayerCount());
                 controller.setSession(new GameSession(controller.getPlayerCount()));
                 controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
                 controller.initPlayerUIs();
@@ -85,7 +88,7 @@ public class GameNetworkClient {
             } else {
                 controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
             }
-            System.out.println("[DEBUG_LOG] Restoring GameState.");
+            LOGGER.log(Level.INFO, "[DEBUG_LOG] Restoring GameState.");
             controller.getSession().getEngine().restoreState(receivedState);
             if (controller.getSession().getEngine().getTrickManager().isComplete(controller.getPlayerCount())) {
                 controller.renderCurrentTrick();
@@ -117,10 +120,10 @@ public class GameNetworkClient {
     }
 
     private void handleStartGame(GameController controller) {
-        System.out.println("[DEBUG_LOG] START_GAME signal received.");
+        LOGGER.log(Level.INFO, "[DEBUG_LOG] START_GAME signal received.");
         Platform.runLater(() -> {
             if (controller.getSession() == null) {
-                System.out.println("[DEBUG_LOG] START_GAME received. Initializing session locally for playerCount: " + controller.getPlayerCount());
+                LOGGER.log(Level.INFO, "[DEBUG_LOG] START_GAME received. Initializing session locally for playerCount: {0}", controller.getPlayerCount());
                 controller.setSession(new GameSession(controller.getPlayerCount()));
                 controller.getSession().getEngine().createPlayers(controller.getPlayerCount());
                 controller.initPlayerUIs();
@@ -128,7 +131,7 @@ public class GameNetworkClient {
             }
             controller.lobbyOverlay.setManaged(false);
             controller.lobbyOverlay.setVisible(false);
-            System.out.println("[DEBUG_LOG] Lobby overlay hidden.");
+            LOGGER.log(Level.INFO, "[DEBUG_LOG] Lobby overlay hidden.");
         });
     }
 
@@ -138,9 +141,9 @@ public class GameNetworkClient {
                 networkOutputStream.reset();
                 networkOutputStream.writeObject(action);
                 networkOutputStream.flush();
-                System.out.println("[DEBUG_LOG] Sent action: " + action);
+                LOGGER.log(Level.FINE, "[DEBUG_LOG] Sent action: {0}", action);
             } catch (IOException e) {
-                e.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Failed to send action", e);
             }
         }
     }

@@ -21,6 +21,8 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class GameController implements MissionClientCallback {
     @FXML private Label missionLabel;
@@ -73,6 +75,7 @@ public class GameController implements MissionClientCallback {
     private HandUIManager handUIManager;
     private TrickUIManager trickUIManager;
     private TaskUIManager taskUIManager;
+    private static final Logger LOGGER = Logger.getLogger(GameController.class.getName());
 
     public GameSession getSession() {
         return session;
@@ -125,7 +128,6 @@ public class GameController implements MissionClientCallback {
             setupRMI();
 
         } catch (Exception exception) {
-            System.err.println("[DEBUG_LOG] Error in GameController.initialize():");
             exception.printStackTrace();
             throw exception;
         }
@@ -313,10 +315,9 @@ public class GameController implements MissionClientCallback {
             if (session != null && session.getEngine() != null) {
                 session.getEngine().setMissionService(service);
             }
-            System.out.println("[RMI] Registered with MissionService as " + playerName);
+            LOGGER.log(Level.INFO, "[RMI] Registered with MissionService as {0}", playerName);
         } catch (Exception e) {
-            System.err.println("[RMI] Failed to setup RMI: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "[RMI] Failed to setup RMI", e);
         }
     }
 
@@ -325,7 +326,7 @@ public class GameController implements MissionClientCallback {
         String result = success ? "USPJEH" : "NEUSPJEH";
         String line = "Misija " + missionId + ": " + result;
         Platform.runLater(() -> {
-            System.out.println("[RMI] " + line);
+            LOGGER.log(Level.INFO, "[RMI] {0}", line);
             if (missionLogArea != null) {
                 missionLogArea.appendText(line + "\n");
             }

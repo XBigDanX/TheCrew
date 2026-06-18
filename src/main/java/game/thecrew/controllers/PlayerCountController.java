@@ -5,10 +5,14 @@ import game.thecrew.network.rmi.MissionServiceImpl;
 import game.thecrew.thread.NetworkThread;
 import game.thecrew.utils.NetworkUtils;
 import javafx.fxml.FXML;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javafx.scene.control.Button;
 import javafx.scene.layout.VBox;
 
 public class PlayerCountController {
+
+    private static final Logger LOGGER = Logger.getLogger(PlayerCountController.class.getName());
 
     @FXML
     private VBox root;
@@ -41,11 +45,10 @@ public class PlayerCountController {
         try {
             missionService = MissionLogServer.startServer();
         } catch (Exception e) {
-            System.err.println("[RMI] Failed to start MissionLogServer: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "[RMI] Failed to start MissionLogServer", e);
         }
 
-        NetworkThread nt = new NetworkThread(NetworkUtils.BASE_PORT, playerCount, missionService);
+        NetworkThread nt = new NetworkThread(playerCount, missionService);
         nt.setDaemon(true);
         nt.start();
 

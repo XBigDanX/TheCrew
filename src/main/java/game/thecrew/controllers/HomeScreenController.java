@@ -13,9 +13,12 @@ import javafx.scene.control.TextField;
 
 import java.io.ObjectInputStream;
 import java.net.Socket;
-
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class HomeScreenController {
+
+    private static final Logger LOGGER = Logger.getLogger(HomeScreenController.class.getName());
 
     @FXML
     private TextField ipAddressField;
@@ -63,7 +66,7 @@ public class HomeScreenController {
                 PlayerInfo assignedInfo = (PlayerInfo) in.readObject();
                 GameApplication.setPlayerInfo(assignedInfo);
 
-                System.out.println("Joined as: " + assignedInfo.getName());
+                LOGGER.log(Level.INFO, "Joined as: {0}", assignedInfo.getName());
 
                 javafx.application.Platform.runLater(() -> {
                     GameNetworkClient.setNetworkConnection(socket, in);
@@ -71,7 +74,7 @@ public class HomeScreenController {
                         FXMLLoader loader = new FXMLLoader(HomeScreenController.class.getResource("/game/thecrew/GameBoard.fxml"));
                         sourceButton.getScene().setRoot(loader.load());
                     } catch (Exception e) {
-                        e.printStackTrace(); // Log exact cause
+                        LOGGER.log(Level.SEVERE, "Could not load the game board", e);
                         Alert alert = new Alert(Alert.AlertType.ERROR);
                         alert.setTitle(ERROR_MSG);
                         alert.setHeaderText(NAVIGATION_ERROR_MSG);
@@ -81,7 +84,7 @@ public class HomeScreenController {
                 });
 
             } catch (Exception e) {
-                System.err.println("Failed to join: " + e.getMessage());
+                LOGGER.log(Level.WARNING, "Failed to join: {0}", e.getMessage());
             }
         }).start();
     }

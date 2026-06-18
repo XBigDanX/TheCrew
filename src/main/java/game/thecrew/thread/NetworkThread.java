@@ -16,6 +16,8 @@ import game.thecrew.network.rmi.MissionServiceImpl;
 import java.rmi.RemoteException;
 
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
@@ -27,15 +29,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class NetworkThread extends Thread {
 
-    private final int port;
     private final int maxPlayers;
     private final AtomicInteger nextPlayerId = new AtomicInteger(0);
     private final List<ObjectOutputStream> clientOutputStreams = Collections.synchronizedList(new ArrayList<>());
     private GameSession session;
     private MissionServiceImpl missionService;
+    private static final Logger LOGGER = Logger.getLogger(NetworkThread.class.getName());
 
-    public NetworkThread(int port, int maxPlayers, MissionServiceImpl missionService) {
-        this.port = port;
+    public NetworkThread(int maxPlayers, MissionServiceImpl missionService) {
         this.maxPlayers = maxPlayers;
         this.missionService = missionService;
     }
@@ -46,60 +47,16 @@ public class NetworkThread extends Thread {
         int resolvedPort = Integer.parseInt(portStr);
         try (ServerSocket serverSocket = new ServerSocket(resolvedPort)) {
             while (nextPlayerId.get() < maxPlayers) {
-                try {
-                    Socket clientSocket = serverSocket.accept();
-                    ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
-                    clientOutputStreams.add(out);
-
-                    int id = nextPlayerId.getAndIncrement();
-
-                    PlayerInfo assignedPlayer = new PlayerInfo("PLAYER_" + id, id, maxPlayers);
-
-                    out.writeObject(assignedPlayer);
-                    out.flush();
-
-                    // Broadcast lobby status to all currently connected clients
-                    int currentJoinedCount = clientOutputStreams.size();
-                    for (ObjectOutputStream clientOut : clientOutputStreams) {
-                        try {
-                            clientOut.writeObject("LOBBY_STATUS:" + currentJoinedCount + "/" + maxPlayers);
-                            clientOut.flush();
-                        } catch (IOException e) {
-                            System.err.println("Error broadcasting lobby status: " + e.getMessage());
-                        }
-                    }
-
-                    System.out.println("[DEBUG_LOG] Assigned " + assignedPlayer.getName() + " to " + clientSocket.getInetAddress());
-
-                    // Start a handler for this client to listen for actions
-                    new ClientHandler(clientSocket, id).start();
-
-                } catch (Exception e) {
-                    System.err.println("Error assigning player info: " + e.getMessage());
-                }
+                acceptAndInitializePlayer(serverSocket);
             }
-            System.out.println("[DEBUG_LOG] Server reached max players (" + maxPlayers + "). Sending start signal to " + clientOutputStreams.size() + " clients.");
+            LOGGER.log(Level.INFO, "[DEBUG_LOG] Server reached max players ({0}). Sending start signal to {1} clients.", new Object[]{maxPlayers, clientOutputStreams.size()});
 
-            for (int i = 0; i < clientOutputStreams.size(); i++) {
-                ObjectOutputStream out = clientOutputStreams.get(i);
-                try {
-                    out.writeObject("START_GAME");
-                    out.flush();
-                    System.out.println("[DEBUG_LOG] Sent START_GAME to client " + i);
-                } catch (IOException e) {
-                    System.err.println("[DEBUG_LOG] Error sending START_GAME to client " + i + ": " + e.getMessage());
-                }
-            }
+            sendStartSignalToAllClients();
 
-            // Small delay to ensure clients have processed START_GAME before GameState arrives
-            try {
-                Thread.sleep(800);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            sleepAfterStartSignal();
 
             if (session == null) {
-                System.out.println("[DEBUG_LOG] Initializing Master GameSession with " + maxPlayers + " players.");
+                LOGGER.log(Level.INFO, "[DEBUG_LOG] Initializing Master GameSession with {0} players.", maxPlayers);
                 session = new GameSession(maxPlayers);
                 session.start();
             }
@@ -107,112 +64,192 @@ public class NetworkThread extends Thread {
             broadcastState();
 
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Server socket error", e);
+        }
+    }
+
+    private void acceptAndInitializePlayer(ServerSocket serverSocket) {
+        try {
+            Socket clientSocket = serverSocket.accept();
+            ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
+            clientOutputStreams.add(out);
+
+            int id = nextPlayerId.getAndIncrement();
+
+            PlayerInfo assignedPlayer = new PlayerInfo("PLAYER_" + id, id, maxPlayers);
+
+            out.writeObject(assignedPlayer);
+            out.flush();
+
+            broadcastLobbyStatus(clientOutputStreams.size());
+
+            LOGGER.log(Level.INFO, "[DEBUG_LOG] Assigned {0} to {1}", new Object[]{assignedPlayer.getName(), clientSocket.getInetAddress()});
+
+            new ClientHandler(clientSocket, id).start();
+
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Error assigning player info: {0}", e.getMessage());
+        }
+    }
+
+    private void broadcastLobbyStatus(int currentJoinedCount) {
+        for (ObjectOutputStream clientOut : clientOutputStreams) {
+            try {
+                clientOut.writeObject("LOBBY_STATUS:" + currentJoinedCount + "/" + maxPlayers);
+                clientOut.flush();
+            } catch (IOException e) {
+                LOGGER.log(Level.WARNING, "Error broadcasting lobby status: {0}", e.getMessage());
+            }
+        }
+    }
+
+    private void sendStartSignalToAllClients() {
+        for (int i = 0; i < clientOutputStreams.size(); i++) {
+            ObjectOutputStream out = clientOutputStreams.get(i);
+            try {
+                out.writeObject("START_GAME");
+                out.flush();
+                LOGGER.log(Level.FINE, "[DEBUG_LOG] Sent START_GAME to client {0}", i);
+            } catch (IOException e) {
+                LOGGER.log(Level.WARNING, "[DEBUG_LOG] Error sending START_GAME to client {0}: {1}", new Object[]{i, e.getMessage()});
+            }
+        }
+    }
+
+    private void sendStateToClient(ObjectOutputStream out, GameState state, int clientIndex) {
+        try {
+            out.reset();
+            out.writeObject(state);
+            out.flush();
+            LOGGER.log(Level.FINEST, "[DEBUG_LOG] Sent GameState to client {0}", clientIndex);
+        } catch (IOException e) {
+            LOGGER.log(Level.WARNING, "Error broadcasting GameState to client {0}: {1}", new Object[]{clientIndex, e.getMessage()});
+        }
+    }
+
+    private static void sleepAfterStartSignal() {
+        try {
+            Thread.sleep(800);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
     private synchronized void broadcastState() {
         GameState state = session.getEngine().saveState();
-        System.out.println("[DEBUG_LOG] Broadcasting GameState to " + clientOutputStreams.size() + " clients.");
+        LOGGER.log(Level.FINE, "[DEBUG_LOG] Broadcasting GameState to {0} clients.", clientOutputStreams.size());
         for (int i = 0; i < clientOutputStreams.size(); i++) {
-            ObjectOutputStream out = clientOutputStreams.get(i);
-            try {
-                out.reset();
-                out.writeObject(state);
-                out.flush();
-                System.out.println("[DEBUG_LOG] Sent GameState to client " + i);
-            } catch (IOException e) {
-                System.err.println("Error broadcasting GameState to client " + i + ": " + e.getMessage());
-            }
+            sendStateToClient(clientOutputStreams.get(i), state, i);
         }
     }
 
     private synchronized void handleAction(GameAction action) {
-        System.out.println("[DEBUG_LOG] Processing action: " + action);
-        boolean success = false;
+        LOGGER.log(Level.INFO, "[DEBUG_LOG] Processing action: {0}", action);
+        boolean success;
         switch (action.getType()) {
-            case PLAY_CARD:
-                if (action.getPlayerIndex() != session.getEngine().getPlayerManager().getCurrentPlayerIndex()) {
-                    System.out.println("Out of turn play attempted");
-                    success = false;
-                    break;
-                }
-                success = session.getEngine().playCard(action.getPlayerIndex(), (Card) action.getPayload());
-                if (success) {
-                    broadcastState();
-                    Mission mission = session.getEngine().getCurrentMission();
-                    if (mission.getStatus() == MissionStatus.SUCCESS || mission.getStatus() == MissionStatus.FAILED) {
-                        if (missionService != null) {
-                            try {
-                                missionService.logMissionCompletion(mission.getId(), mission.getStatus() == MissionStatus.SUCCESS, "Server");
-                            } catch (RemoteException e) {
-                                System.err.println("[RMI] Failed to log mission completion: " + e.getMessage());
-                            }
-                        }
-                    }
-                    if (session.getEngine().getTrickManager().isComplete(maxPlayers)) {
-                        int winnerIndex = session.getEngine().getTrickManager().getWinner();
-                        for (ObjectOutputStream clientOut : clientOutputStreams) {
-                            try {
-                                clientOut.writeObject("TRICK_WINNER:" + winnerIndex);
-                                clientOut.flush();
-                            } catch (IOException e) {
-                                System.err.println("Error sending TRICK_WINNER: " + e.getMessage());
-                            }
-                        }
-                        new Thread(() -> {
-                            try {
-                                Thread.sleep(2000);
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                            }
-                            session.getEngine().resetTrick();
-                            broadcastState();
-                        }).start();
-                    }
-                    return;
-                }
-                break;
-            case SELECT_TASK:
+            case PLAY_CARD -> {
+                success = handlePlayCard(action);
+                if (success) return;
+            }
+            case SELECT_TASK ->
                 success = session.getEngine().selectTask(action.getPlayerIndex(), (Task) action.getPayload());
-                break;
-            case PASS_TASK_SELECTION:
+            case PASS_TASK_SELECTION ->
                 success = session.getEngine().passTaskSelection(action.getPlayerIndex());
-                break;
-            case REQUEST_COMMUNICATION:
-                session.getEngine().requestCommunication(action.getPlayerIndex());
-                success = true;
-                break;
-            case SELECT_COMMUNICATION_CARD:
-                Object[] p = (Object[]) action.getPayload();
-                success = session.getEngine().selectCommunicationCard(action.getPlayerIndex(), (Card) p[0], (TokenPosition) p[1]);
-                if (success) {
-                    session.getEngine().applyPendingTokens();
-                }
-                break;
-            case DISMISS_COMMUNICATION:
-                session.getEngine().removeActiveToken(action.getPlayerIndex());
-                success = true;
-                break;
-            case LOAD_GAME:
-                session.getEngine().restoreState((GameState) action.getPayload());
-                success = true;
-                break;
-            case NEXT_MISSION:
-                session.getEngine().advanceToNextMission();
-                success = true;
-                break;
-            case RETRY_MISSION:
-                session.getEngine().restartCurrentMission();
-                success = true;
-                break;
+            case REQUEST_COMMUNICATION, SELECT_COMMUNICATION_CARD, DISMISS_COMMUNICATION ->
+                success = handleCommunicationAction(action);
+            case LOAD_GAME, NEXT_MISSION, RETRY_MISSION ->
+                success = handleAdminAction(action);
+            default -> success = false;
         }
-
         if (success) {
             broadcastState();
         } else {
-            System.out.println("[DEBUG_LOG] Action failed: " + action);
+            LOGGER.log(Level.INFO, "[DEBUG_LOG] Action failed: {0}", action);
         }
+    }
+
+    private boolean handlePlayCard(GameAction action) {
+        if (action.getPlayerIndex() != session.getEngine().getPlayerManager().getCurrentPlayerIndex()) {
+            LOGGER.log(Level.WARNING, "Out of turn play attempted");
+            return false;
+        }
+        boolean success = session.getEngine().playCard(action.getPlayerIndex(), (Card) action.getPayload());
+        if (success) {
+            broadcastState();
+            processPostPlayState();
+        }
+        return success;
+    }
+
+    private void processPostPlayState() {
+        Mission mission = session.getEngine().getCurrentMission();
+        if ((mission.getStatus() == MissionStatus.SUCCESS || mission.getStatus() == MissionStatus.FAILED) && missionService != null) {
+            try {
+                missionService.logMissionCompletion(mission.getId(), mission.getStatus() == MissionStatus.SUCCESS, "Server");
+            } catch (RemoteException e) {
+                LOGGER.log(Level.WARNING, "[RMI] Failed to log mission completion: {0}", e.getMessage());
+            }
+        }
+        if (session.getEngine().getTrickManager().isComplete(maxPlayers)) {
+            int winnerIndex = session.getEngine().getTrickManager().getWinner();
+            for (ObjectOutputStream clientOut : clientOutputStreams) {
+                try {
+                    clientOut.writeObject("TRICK_WINNER:" + winnerIndex);
+                    clientOut.flush();
+                } catch (IOException e) {
+                    LOGGER.log(Level.WARNING, "Error sending TRICK_WINNER: {0}", e.getMessage());
+                }
+            }
+            new Thread(() -> {
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                session.getEngine().resetTrick();
+                broadcastState();
+            }).start();
+        }
+    }
+
+    private boolean handleCommunicationAction(GameAction action) {
+        return switch (action.getType()) {
+            case REQUEST_COMMUNICATION -> {
+                session.getEngine().requestCommunication(action.getPlayerIndex());
+                yield true;
+            }
+            case SELECT_COMMUNICATION_CARD -> {
+                Object[] p = (Object[]) action.getPayload();
+                boolean success = session.getEngine().selectCommunicationCard(action.getPlayerIndex(), (Card) p[0], (TokenPosition) p[1]);
+                if (success) {
+                    session.getEngine().applyPendingTokens();
+                }
+                yield success;
+            }
+            case DISMISS_COMMUNICATION -> {
+                session.getEngine().removeActiveToken(action.getPlayerIndex());
+                yield true;
+            }
+            default -> throw new IllegalArgumentException("Unexpected communication action: " + action.getType());
+        };
+    }
+
+    private boolean handleAdminAction(GameAction action) {
+        return switch (action.getType()) {
+            case LOAD_GAME -> {
+                session.getEngine().restoreState((GameState) action.getPayload());
+                yield true;
+            }
+            case NEXT_MISSION -> {
+                session.getEngine().advanceToNextMission();
+                yield true;
+            }
+            case RETRY_MISSION -> {
+                session.getEngine().restartCurrentMission();
+                yield true;
+            }
+            default -> throw new IllegalArgumentException("Unexpected admin action: " + action.getType());
+        };
     }
 
     private class ClientHandler extends Thread {
@@ -231,12 +268,12 @@ public class NetworkThread extends Thread {
                     Object obj = in.readObject();
                     if (obj instanceof GameAction) {
                         GameAction action = (GameAction) obj;
-                        System.out.println("[DEBUG_LOG] Server received action: " + action.getType() + " from PLAYER_" + action.getPlayerIndex());
+                        LOGGER.log(Level.INFO, "[DEBUG_LOG] Server received action: {0} from PLAYER_{1}", new Object[]{action.getType(), action.getPlayerIndex()});
                         handleAction(action);
                     }
                 }
             } catch (IOException | ClassNotFoundException e) {
-                System.out.println("Client PLAYER_" + playerIndex + " disconnected: " + socket.getInetAddress());
+                LOGGER.log(Level.INFO, "Client PLAYER_{0} disconnected: {1}", new Object[]{playerIndex, socket.getInetAddress()});
             }
         }
     }

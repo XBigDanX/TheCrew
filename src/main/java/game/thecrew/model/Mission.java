@@ -7,8 +7,12 @@ import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Mission implements Serializable {
+
+    private static final Logger LOGGER = Logger.getLogger(Mission.class.getName());
 
     private final int id;
     private final int difficulty;
@@ -156,7 +160,7 @@ public class Mission implements Serializable {
             try {
                 missionService.logMissionCompletion(id, status == MissionStatus.SUCCESS, "Server");
             } catch (RemoteException e) {
-                System.err.println("[RMI] Failed to log mission completion: " + e.getMessage());
+                LOGGER.log(Level.WARNING, "[RMI] Failed to log mission completion: {0}", e.getMessage());
             }
         }
     }
