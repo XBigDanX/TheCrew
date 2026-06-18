@@ -17,9 +17,9 @@ public class GameAction implements Serializable {
 
     private final int playerIndex;
     private final ActionType type;
-    private final Object payload;
+    private final Serializable payload;
 
-    public GameAction(int playerIndex, ActionType type, Object payload) {
+    public GameAction(int playerIndex, ActionType type, Serializable payload) {
         this.playerIndex = playerIndex;
         this.type = type;
         this.payload = payload;
@@ -27,7 +27,7 @@ public class GameAction implements Serializable {
 
     public int getPlayerIndex() { return playerIndex; }
     public ActionType getType() { return type; }
-    public Object getPayload() { return payload; }
+    public Serializable getPayload() { return payload; }
 
     @Override
     public String toString() {

@@ -105,9 +105,7 @@ public class GameNetworkClient {
                             });
                         } else if (msg.startsWith("LOBBY_STATUS:")) {
                             String status = msg.substring("LOBBY_STATUS:".length());
-                            Platform.runLater(() -> {
-                                controller.lobbyStatusLabel.setText("Waiting for Players... (" + status + ")");
-                            });
+                            Platform.runLater(() -> controller.lobbyStatusLabel.setText("Waiting for Players... (" + status + ")"));
                         } else if (msg.startsWith("TRICK_WINNER:")) {
                             String idStr = msg.substring("TRICK_WINNER:".length());
                             int winnerId = Integer.parseInt(idStr);

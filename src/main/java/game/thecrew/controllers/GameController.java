@@ -223,33 +223,38 @@ public class GameController implements MissionClientCallback {
 
         Mission mission = session.getEngine().getCurrentMission();
         if (mission == null) {
-            for (int i = 0; i < playerCount; i++) {
-                if (i < infoLabels.length && infoLabels[i] != null) {
-                    infoLabels[i].setText("Waiting for game start...");
-                }
-            }
+            setAllLabels("Waiting for game start...");
             return;
         }
 
         List<Player> players = session.getEngine().getPlayerManager().getPlayers();
         for (int i = 0; i < playerCount; i++) {
-            if (i >= players.size()) {
-                if (i < infoLabels.length && infoLabels[i] != null) {
-                    infoLabels[i].setText("Waiting for player...");
-                }
-                continue;
-            }
+            setInfoLabel(i, players, mission);
+        }
+    }
 
-            String captainSuffix = (i == mission.getCaptainIndex()) ? "  [Captain]" : "";
-            if (i < infoLabels.length && infoLabels[i] != null) {
-                Player player = players.get(i);
-                String labelText = "Player " + (i + 1)
-                    + " | Tricks: " + mission.getPlayerWinCount(i)
-                    + "  Cards: " + player.getHand().size()
-                    + captainSuffix;
-                infoLabels[i].setText(labelText);
+    private void setAllLabels(String text) {
+        for (int i = 0; i < Math.min(playerCount, infoLabels.length); i++) {
+            if (infoLabels[i] != null) {
+                infoLabels[i].setText(text);
             }
         }
+    }
+
+    private void setInfoLabel(int i, List<Player> players, Mission mission) {
+        if (i >= infoLabels.length || infoLabels[i] == null) {
+            return;
+        }
+        if (i >= players.size()) {
+            infoLabels[i].setText("Waiting for player...");
+            return;
+        }
+        Player player = players.get(i);
+        String captainSuffix = (i == mission.getCaptainIndex()) ? "  [Captain]" : "";
+        infoLabels[i].setText("Player " + (i + 1)
+            + " | Tricks: " + mission.getPlayerWinCount(i)
+            + "  Cards: " + player.getHand().size()
+            + captainSuffix);
     }
 
     @FXML
