@@ -7,6 +7,8 @@ import game.thecrew.model.CommunicationToken;
 import game.thecrew.model.GamePhase;
 import game.thecrew.model.Mission;
 import game.thecrew.model.Player;
+import game.thecrew.model.TokenPosition;
+import game.thecrew.network.NetworkActionSender;
 import game.thecrew.ui.CardView;
 import game.thecrew.ui.PlayerUI;
 import javafx.animation.PauseTransition;
@@ -19,8 +21,6 @@ import javafx.scene.shape.Circle;
 import javafx.util.Duration;
 
 import java.util.List;
-import java.util.function.BiConsumer;
-import java.util.function.IntConsumer;
 
 public class HandUIManager {
 
@@ -43,7 +43,7 @@ public class HandUIManager {
         }
     }
 
-    public void initCommButtons(int playerCount, IntConsumer onCommClicked) {
+    public void initCommButtons(int playerCount, NetworkActionSender actionSender) {
         commActionButtons = new Button[playerCount];
         for (int i = 0; i < playerCount; i++) {
             Button button = new Button();
@@ -54,7 +54,7 @@ public class HandUIManager {
             button.setManaged(false);
             button.setVisible(false);
             int index = i;
-            button.setOnAction(e -> onCommClicked.accept(index));
+            button.setOnAction(e -> actionSender.requestCommunication(index));
             StackPane.setAlignment(button, Pos.CENTER);
             if (commAreas[i] != null) {
                 commAreas[i].getChildren().add(button);
@@ -63,17 +63,13 @@ public class HandUIManager {
         }
     }
 
-    public void renderAllHands(GameSession session, int playerCount,
-                                BiConsumer<Integer, Card> onCardClicked,
-                                BiConsumer<Integer, Card> onCommunicationCardSelected) {
+    public void renderAllHands(GameSession session, int playerCount, NetworkActionSender actionSender) {
         for (int i = 0; i < playerCount; i++) {
-            renderPlayerHand(session, i, onCardClicked, onCommunicationCardSelected);
+            renderPlayerHand(session, i, actionSender);
         }
     }
 
-    private void renderPlayerHand(GameSession session, int playerIndex,
-                                   BiConsumer<Integer, Card> onCardClicked,
-                                   BiConsumer<Integer, Card> onCommunicationCardSelected) {
+    private void renderPlayerHand(GameSession session, int playerIndex, NetworkActionSender actionSender) {
         if (playerIndex >= hands.length || hands[playerIndex] == null) return;
         if (session == null || session.getEngine() == null) return;
 
@@ -87,15 +83,14 @@ public class HandUIManager {
         boolean isLocalPlayer = GameApplication.getPlayerInfo() != null && playerIndex == GameApplication.getPlayerInfo().getIndex();
 
         if (isLocalPlayer) {
-            renderLocalHand(session, playerIndex, handPane, player, onCardClicked, onCommunicationCardSelected);
+            renderLocalHand(session, playerIndex, handPane, player, actionSender);
         } else {
             renderRemoteHand(handPane, player);
         }
     }
 
     private void renderLocalHand(GameSession session, int playerIndex, FlowPane handPane, Player player,
-                                  BiConsumer<Integer, Card> onCardClicked,
-                                  BiConsumer<Integer, Card> onCommunicationCardSelected) {
+                                  NetworkActionSender actionSender) {
         int communicatingPlayerIndex = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
         List<Card> validCommCards = (communicatingPlayerIndex == playerIndex)
                 ? session.getEngine().getCommunicationManager().getValidCommunicationCards(playerIndex, session.getEngine().getCurrentMission())
@@ -103,7 +98,7 @@ public class HandUIManager {
 
         for (Card card : player.getHand()) {
             CardView cardView = new CardView(card);
-            setupCardInteraction(cardView, card, playerIndex, session, validCommCards, onCardClicked, onCommunicationCardSelected);
+            setupCardInteraction(cardView, card, playerIndex, session, validCommCards, actionSender);
             handPane.getChildren().add(cardView);
         }
     }
@@ -115,34 +110,39 @@ public class HandUIManager {
     }
 
     private void setupCardInteraction(CardView cardView, Card card, int playerIndex, GameSession session,
-                                       List<Card> validCommCards,
-                                       BiConsumer<Integer, Card> onCardClicked,
-                                       BiConsumer<Integer, Card> onCommunicationCardSelected) {
+                                       List<Card> validCommCards, NetworkActionSender actionSender) {
         GamePhase currentPhase = session.getEngine().getPhase();
         int communicatingPlayerIndex = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
         boolean isMyTurn = GameApplication.getPlayerInfo() != null
                 && playerIndex == GameApplication.getPlayerInfo().getIndex()
                 && session.getEngine().getPlayerManager().getCurrentPlayerIndex() == GameApplication.getPlayerInfo().getIndex();
 
+        Card clickedCard = card;
+
         if (currentPhase == GamePhase.COMMUNICATION && communicatingPlayerIndex == playerIndex) {
             if (validCommCards != null && validCommCards.contains(card)) {
-                Card clickedCard = card;
                 cardView.setStyle("-fx-border-color: yellow; -fx-border-width: 2;");
-                cardView.setOnMouseClicked(e -> onCommunicationCardSelected.accept(playerIndex, clickedCard));
+                cardView.setOnMouseClicked(e -> {
+                    TokenPosition tp = session.getEngine().getCommunicationManager()
+                        .resolveCommunicationPosition(playerIndex, clickedCard);
+                    if (tp != null) actionSender.selectCommunicationCard(playerIndex, clickedCard, tp);
+                });
             }
         } else if (isMyTurn && currentPhase == GamePhase.TRICKING) {
             if (validCommCards != null && validCommCards.contains(card)) {
-                Card clickedCard = card;
                 cardView.setStyle("-fx-border-color: yellow; -fx-border-width: 2;");
-                cardView.setOnMouseClicked(e -> onCommunicationCardSelected.accept(playerIndex, clickedCard));
+                cardView.setOnMouseClicked(e -> {
+                    TokenPosition tp = session.getEngine().getCommunicationManager()
+                        .resolveCommunicationPosition(playerIndex, clickedCard);
+                    if (tp != null) actionSender.selectCommunicationCard(playerIndex, clickedCard, tp);
+                });
             } else if (communicatingPlayerIndex == -1) {
-                Card clickedCard = card;
-                cardView.setOnMouseClicked(e -> onCardClicked.accept(playerIndex, clickedCard));
+                cardView.setOnMouseClicked(e -> actionSender.playCard(playerIndex, clickedCard));
             }
         }
     }
 
-    public void renderCommunicationUI(GameSession session, int playerCount, IntConsumer onDismiss) {
+    public void renderCommunicationUI(GameSession session, int playerCount, NetworkActionSender actionSender) {
         if (session == null || session.getEngine() == null || commActionButtons == null) return;
         Mission mission = session.getEngine().getCurrentMission();
         if (mission == null) return;
@@ -170,7 +170,7 @@ public class HandUIManager {
         }
 
         int localIndex = GameApplication.getPlayerInfo() != null ? GameApplication.getPlayerInfo().getIndex() : -1;
-        scheduleDismissTimer(mission, localIndex, onDismiss);
+        scheduleDismissTimer(mission, localIndex, actionSender);
     }
 
     private void updateCommButtonStyle(Button btn, int playerIndex, Mission mission, GameSession session,
@@ -224,7 +224,7 @@ public class HandUIManager {
         }
     }
 
-    private void scheduleDismissTimer(Mission mission, int localIndex, IntConsumer onDismiss) {
+    private void scheduleDismissTimer(Mission mission, int localIndex, NetworkActionSender actionSender) {
         if (localIndex < 0 || dismissTimerScheduled) return;
 
         for (CommunicationToken token : mission.getActiveTokens()) {
@@ -232,7 +232,7 @@ public class HandUIManager {
                 dismissTimerScheduled = true;
                 PauseTransition delay = new PauseTransition(Duration.seconds(5));
                 delay.setOnFinished(e -> {
-                    onDismiss.accept(localIndex);
+                    actionSender.dismissCommunication(localIndex);
                     dismissTimerScheduled = false;
                 });
                 delay.play();

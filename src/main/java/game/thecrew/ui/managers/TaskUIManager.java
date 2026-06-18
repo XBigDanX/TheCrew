@@ -6,11 +6,11 @@ import game.thecrew.model.GamePhase;
 import game.thecrew.model.Mission;
 import game.thecrew.model.Player;
 import game.thecrew.model.Task;
+import game.thecrew.network.NetworkActionSender;
 import game.thecrew.ui.TaskView;
 import javafx.scene.layout.HBox;
 
 import java.util.List;
-import java.util.function.BiConsumer;
 
 public class TaskUIManager {
 
@@ -22,7 +22,7 @@ public class TaskUIManager {
         taskHands = new HBox[]{taskHand0, taskHand1, taskHand2, taskHand3, taskHand4};
     }
 
-    public void renderTasks(GameSession session, BiConsumer<Integer, Task> onTaskClicked) {
+    public void renderTasks(GameSession session, NetworkActionSender actionSender) {
         if (availableTasksBox == null || session == null || session.getEngine() == null) return;
         availableTasksBox.getChildren().clear();
         Mission mission = session.getEngine().getCurrentMission();
@@ -37,7 +37,7 @@ public class TaskUIManager {
                 TaskView taskView = new TaskView(activeTask);
                 if (isMyTurn && session.getEngine().getPhase() == GamePhase.TASK_SELECTION) {
                     Task clickedTask = activeTask;
-                    taskView.setOnMouseClicked(e -> onTaskClicked.accept(playerIndexFromTurn(session), clickedTask));
+                    taskView.setOnMouseClicked(e -> actionSender.selectTask(playerIndexFromTurn(session), clickedTask));
                 }
                 availableTasksBox.getChildren().add(taskView);
             }
