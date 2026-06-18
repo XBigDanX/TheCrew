@@ -25,7 +25,7 @@ public class CardView extends StackPane {
         background.setFill(getColor(card.getColor()));
 
         Text text = new Text(String.valueOf(card.getValue()));
-        text.setFont(Font.font("System", 28));
+        text.setFont(Font.font("System", 34));
 
         getChildren().addAll(background, text);
     }
