@@ -24,13 +24,13 @@ public class MissionServiceImpl extends UnicastRemoteObject implements MissionSe
     @Override
     public void logMissionCompletion(int missionId, boolean success, String playerName) throws RemoteException {
         LOGGER.log(Level.INFO, "[RMI] Mission {0} completed by {1} with success={2}", new Object[]{missionId, playerName, success});
-        broadcast(missionId, success, playerName);
+        broadcast(missionId, success);
     }
 
-    public void broadcast(int missionId, boolean success, String playerName) {
+    public void broadcast(int missionId, boolean success) {
         for (MissionClientCallback callback : clients.values()) {
             try {
-                callback.updateLog(missionId, success, playerName);
+                callback.updateLog(missionId, success);
             } catch (RemoteException e) {
                 LOGGER.log(Level.WARNING, "[RMI] Failed to notify client: {0}", e.getMessage());
             }

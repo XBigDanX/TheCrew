@@ -45,7 +45,7 @@ public class RMIManager {
         }
     }
 
-    public void updateLog(int missionId, boolean success, String playerName) {
+    public void updateLog(int missionId, boolean success) {
         String result = success ? "USPJEH" : "NEUSPJEH";
         String line = "Misija " + missionId + ": " + result;
         Platform.runLater(() -> {

@@ -5,6 +5,6 @@ import java.rmi.RemoteException;
 
 public interface MissionClientCallback extends Remote {
 
-    void updateLog(int missionId, boolean success, String playerName) throws RemoteException;
+    void updateLog(int missionId, boolean success) throws RemoteException;
 
 }

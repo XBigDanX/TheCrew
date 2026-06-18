@@ -37,13 +37,10 @@ public class TrickUIManager {
                 return false;
             }
         }
-        if (session != null && session.getEngine() != null
-                && session.getEngine().getTrickManager() != null
-                && session.getEngine().getTrickManager().getCurrentTrick() != null
-                && !session.getEngine().getTrickManager().getCurrentTrick().getPlays().isEmpty()) {
-            return false;
-        }
-        return true;
+        return session == null || session.getEngine() == null
+                || session.getEngine().getTrickManager() == null
+                || session.getEngine().getTrickManager().getCurrentTrick() == null
+                || session.getEngine().getTrickManager().getCurrentTrick().getPlays().isEmpty();
     }
 
     public void renderCurrentTrick(GameSession session) {

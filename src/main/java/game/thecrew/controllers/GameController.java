@@ -164,7 +164,7 @@ public class GameController implements MissionClientCallback {
     }
 
     @Override
-    public void updateLog(int missionId, boolean success, String playerName) throws RemoteException {
-        rmiManager.updateLog(missionId, success, playerName);
+    public void updateLog(int missionId, boolean success) throws RemoteException {
+        rmiManager.updateLog(missionId, success);
     }
 }

@@ -91,6 +91,10 @@ public class GameStateManager {
         Mission freshMission = engine.missions.get(engine.currentMissionIndex);
         freshMission.setStatus(state.getStatus());
 
+        for (int i = 0; i < playerCount; i++) {
+            freshMission.setPlayerUsedToken(i, state.getCommunicationUsed()[i]);
+        }
+
         for (Mission mission : engine.missions) {
             mission.setCaptainIndex(engine.playerManager.getCaptainIndex());
         }
@@ -148,10 +152,6 @@ public class GameStateManager {
     }
 
     private void restoreCommunicationState(GameState state, Mission freshMission, int playerCount) {
-        for (int i = 0; i < engine.getPlayerManager().getPlayers().size(); i++) {
-            freshMission.setPlayerUsedToken(i, state.getCommunicationUsed()[i]);
-        }
-
         freshMission.getActiveTokens().clear();
         freshMission.getActiveTokens().addAll(state.getActiveTokens());
 
