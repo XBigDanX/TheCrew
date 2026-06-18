@@ -9,6 +9,8 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 
 public class CardView extends StackPane {
@@ -24,6 +26,7 @@ public class CardView extends StackPane {
         background.setFill(getColor(card.getColor()));
 
         Text text = new Text(String.valueOf(card.getValue()));
+        text.setFont(Font.font("System", 28));
 
         getChildren().addAll(background, text);
     }
