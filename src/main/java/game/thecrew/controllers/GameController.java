@@ -49,6 +49,7 @@ public class GameController implements MissionClientCallback {
     public int getPlayerCount() { return playerCount; }
     public void setPlayerCount(int playerCount) { this.playerCount = playerCount; }
     public TrickUIManager getTrickUIManager() { return trickUIManager; }
+    public HandUIManager getHandUIManager() { return handUIManager; }
     public List<PlayerUI> getPlayerUIs() { return playerUIs; }
 
     @FXML
