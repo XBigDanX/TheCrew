@@ -113,13 +113,21 @@ public class HandUIManager {
     private void setupCardInteraction(CardView cardView, Card card, int playerIndex, GameSession session,
                                        List<Card> validCommCards, NetworkActionSender actionSender) {
         GamePhase currentPhase = session.getEngine().getPhase();
-        int communicatingPlayerIndex = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
-        Card clickedCard = card;
+        int commIdx = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
 
-        if (currentPhase == GamePhase.COMMUNICATION && communicatingPlayerIndex == playerIndex) {
-            setupCommSelection(cardView, validCommCards, actionSender, playerIndex, clickedCard, session);
-        } else if (isMyTurn(playerIndex, session) && currentPhase == GamePhase.TRICKING) {
-            setupTrickSelection(cardView, validCommCards, actionSender, playerIndex, clickedCard, communicatingPlayerIndex, session);
+        if (currentPhase == GamePhase.COMMUNICATION && commIdx == playerIndex) {
+            setupCommSelection(cardView, validCommCards, actionSender, playerIndex, card, session);
+        } else if (currentPhase == GamePhase.TRICKING && isMyTurn(playerIndex, session)) {
+            setupTrickingInteraction(cardView, validCommCards, actionSender, playerIndex, card, commIdx, session);
+        }
+    }
+
+    private void setupTrickingInteraction(CardView cardView, List<Card> validCommCards, NetworkActionSender actionSender,
+                                           int playerIndex, Card card, int commIdx, GameSession session) {
+        if (validCommCards != null && validCommCards.contains(card)) {
+            setupCommSelection(cardView, validCommCards, actionSender, playerIndex, card, session);
+        } else if (commIdx == -1) {
+            cardView.setOnMouseClicked(e -> actionSender.playCard(playerIndex, card));
         }
     }
 
@@ -141,14 +149,6 @@ public class HandUIManager {
         }
     }
 
-    private void setupTrickSelection(CardView cardView, List<Card> validCommCards, NetworkActionSender actionSender,
-                                      int playerIndex, Card clickedCard, int communicatingPlayerIndex, GameSession session) {
-        if (validCommCards != null && validCommCards.contains(clickedCard)) {
-            setupCommSelection(cardView, validCommCards, actionSender, playerIndex, clickedCard, session);
-        } else if (communicatingPlayerIndex == -1) {
-            cardView.setOnMouseClicked(e -> actionSender.playCard(playerIndex, clickedCard));
-        }
-    }
 
     public void renderCommunicationUI(GameSession session, int playerCount, NetworkActionSender actionSender, TrickUIManager trickUIManager) {
         if (session == null || session.getEngine() == null || commActionButtons == null) return;
@@ -159,21 +159,30 @@ public class HandUIManager {
         CommunicationToken[] pending = session.getEngine().getPendingTokens();
 
         for (int i = 0; i < playerCount; i++) {
-            if (i < commAreas.length && commAreas[i] != null && i < players.size() && i < commActionButtons.length && commActionButtons[i] != null) {
-                Pane commArea = commAreas[i];
-                commArea.getChildren().clear();
-
-                Button commButton = commActionButtons[i];
-                commArea.getChildren().add(commButton);
-
-                updateCommButtonStyle(commButton, i, session, trickUIManager);
-
-                renderTokensForPlayer(commArea, i, mission, pending);
-            }
+            renderPlayerCommunication(i, session, mission, players, pending, trickUIManager);
         }
 
         int localIndex = GameApplication.getPlayerInfo() != null ? GameApplication.getPlayerInfo().getIndex() : -1;
         scheduleDismissTimer(mission, localIndex, actionSender);
+    }
+
+    private void renderPlayerCommunication(int playerIndex, GameSession session, Mission mission,
+                                           List<Player> players, CommunicationToken[] pending,
+                                           TrickUIManager trickUIManager) {
+        if (playerIndex >= commAreas.length || commAreas[playerIndex] == null ||
+            playerIndex >= players.size() || playerIndex >= commActionButtons.length ||
+            commActionButtons[playerIndex] == null) {
+            return;
+        }
+
+        Pane commArea = commAreas[playerIndex];
+        commArea.getChildren().clear();
+
+        Button commButton = commActionButtons[playerIndex];
+        commArea.getChildren().add(commButton);
+
+        updateCommButtonStyle(commButton, playerIndex, session, trickUIManager);
+        renderTokensForPlayer(commArea, playerIndex, mission, pending);
     }
 
     public void updateCommButtonStyle(Button btn, int playerIndex, GameSession session, TrickUIManager trickUIManager) {
@@ -181,60 +190,61 @@ public class HandUIManager {
 
         Mission mission = session.getEngine().getCurrentMission();
         if (mission != null && mission.hasPlayerUsedToken(playerIndex)) {
-            btn.setStyle(RED_USED_STYLE);
-            btn.setDisable(true);
-            btn.setVisible(true);
-            btn.setManaged(true);
+            setButtonStyle(btn, RED_USED_STYLE, true, true);
             return;
         }
 
-        boolean phaseIsComm = session.getEngine().getPhase() == GamePhase.COMMUNICATION;
-        boolean isTricking = session.getEngine().getPhase() == GamePhase.TRICKING;
-        boolean visible = phaseIsComm || isTricking;
-
+        GamePhase phase = session.getEngine().getPhase();
+        boolean visible = phase == GamePhase.COMMUNICATION || phase == GamePhase.TRICKING;
         btn.setVisible(visible);
         btn.setManaged(visible);
 
-        if (!visible) return;
-
-        if (!trickUIManager.isTrickPaneEmpty(session)) {
-            btn.setDisable(true);
-            return;
-        }
-
-        int localPlayerIndex = (GameApplication.getPlayerInfo() != null) ? GameApplication.getPlayerInfo().getIndex() : -1;
-        
-        if (playerIndex != localPlayerIndex) {
+        if (!visible || !isButtonActiveForLocalPlayer(playerIndex, session, trickUIManager)) {
             btn.setDisable(true);
             return;
         }
 
         boolean canComm = !session.getEngine().getCommunicationManager().getValidCommunicationCards(playerIndex, mission).isEmpty();
-
-        if (phaseIsComm) {
-            int commIdx = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
-            if (commIdx == playerIndex) {
-                btn.setStyle("-fx-background-color: red; -fx-cursor: hand;");
-                btn.setDisable(false);
-            } else if (commIdx == -1) {
-                btn.setStyle(canComm ? GREEN_HAND_STYLE : "-fx-background-color: grey; -fx-cursor: default;");
-                btn.setDisable(!canComm);
-            } else {
-                btn.setDisable(true);
-            }
+        if (phase == GamePhase.COMMUNICATION) {
+            updateCommPhaseStyle(btn, playerIndex, session, canComm);
         } else {
-            boolean requested = session.getEngine().getCommunicationManager().isCommunicationRequested(playerIndex);
-            if (requested) {
-                btn.setStyle("-fx-background-color: orange; -fx-cursor: hand;");
-                btn.setDisable(false);
-            } else if (canComm) {
-                btn.setStyle(GREEN_HAND_STYLE);
-                btn.setDisable(false);
-            } else {
-                btn.setStyle("-fx-background-color: grey; -fx-cursor: default;");
-                btn.setDisable(true);
-            }
+            updateTrickingPhaseStyle(btn, playerIndex, session, canComm);
         }
+    }
+
+    private boolean isButtonActiveForLocalPlayer(int playerIndex, GameSession session, TrickUIManager trickUIManager) {
+        if (!trickUIManager.isTrickPaneEmpty(session)) return false;
+        int localPlayerIndex = (GameApplication.getPlayerInfo() != null) ? GameApplication.getPlayerInfo().getIndex() : -1;
+        return playerIndex == localPlayerIndex;
+    }
+
+    private void updateCommPhaseStyle(Button btn, int playerIndex, GameSession session, boolean canComm) {
+        int commIdx = session.getEngine().getCommunicationManager().getCommunicationPlayerIndex();
+        if (commIdx == playerIndex) {
+            setButtonStyle(btn, "-fx-background-color: red; -fx-cursor: hand;", false, true);
+        } else if (commIdx == -1) {
+            setButtonStyle(btn, canComm ? GREEN_HAND_STYLE : "-fx-background-color: grey; -fx-cursor: default;", !canComm, true);
+        } else {
+            btn.setDisable(true);
+        }
+    }
+
+    private void updateTrickingPhaseStyle(Button btn, int playerIndex, GameSession session, boolean canComm) {
+        boolean requested = session.getEngine().getCommunicationManager().isCommunicationRequested(playerIndex);
+        if (requested) {
+            setButtonStyle(btn, "-fx-background-color: orange; -fx-cursor: hand;", false, true);
+        } else if (canComm) {
+            setButtonStyle(btn, GREEN_HAND_STYLE, false, true);
+        } else {
+            setButtonStyle(btn, "-fx-background-color: grey; -fx-cursor: default;", true, true);
+        }
+    }
+
+    private void setButtonStyle(Button btn, String style, boolean disabled, boolean visible) {
+        btn.setStyle(style);
+        btn.setDisable(disabled);
+        btn.setVisible(visible);
+        btn.setManaged(visible);
     }
 
     private void renderTokensForPlayer(Pane commArea, int playerIndex, Mission mission, CommunicationToken[] pending) {
