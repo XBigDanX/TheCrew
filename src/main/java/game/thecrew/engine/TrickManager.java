@@ -45,29 +45,22 @@ public class TrickManager {
         this.currentTrick = trick;
     }
 
-    // =========================
-    // VALIDATION
-    // =========================
     private boolean isValidPlay(Card card, List<Card> playerHand) {
 
         CardColor leadSuit = currentTrick.getLeadSuit();
 
-        // submarine (trump) always allowed
         if (card.isTrump()) {
             return true;
         }
 
-        // first card sets lead
         if (leadSuit == null) {
             return true;
         }
 
-        // following suit
         if (card.getColor() == leadSuit) {
             return true;
         }
 
-        // must follow suit if possible
         for (Card c : playerHand) {
             if (!c.isTrump() && c.getColor() == leadSuit) {
                 return false;

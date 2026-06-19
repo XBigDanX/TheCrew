@@ -16,6 +16,8 @@ import java.net.Socket;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static game.thecrew.utils.NetworkUtils.SERVER_ADDRESS;
+
 public class HomeScreenController {
 
     private static final Logger LOGGER = Logger.getLogger(HomeScreenController.class.getName());
@@ -51,7 +53,7 @@ public class HomeScreenController {
 
     @FXML
     private void onJoinGame() {
-        String hostIp = ipAddressField.getText().isEmpty() ? "localhost" : ipAddressField.getText();
+        String hostIp = ipAddressField.getText().isEmpty() ? SERVER_ADDRESS : ipAddressField.getText();
         joinGame(hostIp, joinButton);
     }
 

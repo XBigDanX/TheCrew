@@ -37,11 +37,11 @@
 
     <Pane fx:id="slot1" layoutX="50.0" layoutY="21.0" prefHeight="90" prefWidth="60" style="-fx-background-color: transparent; -fx-border-color: black; -fx-border-style: dashed; -fx-border-width: 2;" />
 
-    <Pane fx:id="slot2" layoutX="373.0" layoutY="21.0" prefHeight="90" prefWidth="60" style="-fx-background-color: transparent; -fx-border-color: black; -fx-border-style: dashed; -fx-border-width: 2;" />
+    <Pane fx:id="slot3" layoutX="373.0" layoutY="21.0" prefHeight="90" prefWidth="60" style="-fx-background-color: transparent; -fx-border-color: black; -fx-border-style: dashed; -fx-border-width: 2;" />
 
-    <Pane fx:id="slot3" layoutX="373.0" layoutY="160.0" prefHeight="90" prefWidth="60" style="-fx-background-color: transparent; -fx-border-color: black; -fx-border-style: dashed; -fx-border-width: 2;" />
+    <Pane fx:id="slot4" layoutX="373.0" layoutY="160.0" prefHeight="90" prefWidth="60" style="-fx-background-color: transparent; -fx-border-color: black; -fx-border-style: dashed; -fx-border-width: 2;" />
 
-    <Pane fx:id="slot4" layoutX="216.0" layoutY="21.0" prefHeight="90" prefWidth="60" style="-fx-background-color: transparent; -fx-border-color: black; -fx-border-style: dashed; -fx-border-width: 2;" />
+    <Pane fx:id="slot2" layoutX="216.0" layoutY="21.0" prefHeight="90" prefWidth="60" style="-fx-background-color: transparent; -fx-border-color: black; -fx-border-style: dashed; -fx-border-width: 2;" />
 
     <Pane fx:id="slot0" layoutX="50.0" layoutY="160.0" prefHeight="90" prefWidth="60" style="-fx-background-color: transparent; -fx-border-color: black; -fx-border-style: dashed; -fx-border-width: 2;" />
 

@@ -57,10 +57,10 @@ public class MissionLibrary {
     }
 
     public static Mission getMission2(int playerCount) {
-        return new Mission(2, 1, "Locate Beacon — Win the Yellow 1 card",
+        return new Mission(2, 1, "Locate Beacon — Win the Red 1 card",
                 List.of(
                         new Task("Win Yellow 1",
-                                SimpleTaskRule.winSpecificCard(CardColor.YELLOW, 1))
+                                SimpleTaskRule.winSpecificCard(CardColor.RED, 1))
                 ), playerCount);
     }
 

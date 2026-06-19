@@ -9,6 +9,8 @@ import java.util.logging.Logger;
 import javafx.scene.control.Button;
 import javafx.scene.layout.VBox;
 
+import static game.thecrew.utils.NetworkUtils.SERVER_ADDRESS;
+
 public class PlayerCountController {
 
     private static final Logger LOGGER = Logger.getLogger(PlayerCountController.class.getName());
@@ -51,6 +53,6 @@ public class PlayerCountController {
         nt.setDaemon(true);
         nt.start();
 
-        HomeScreenController.joinGame("localhost", twoPlayersButton);
+        HomeScreenController.joinGame(SERVER_ADDRESS, twoPlayersButton);
     }
 }

@@ -13,6 +13,8 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static game.thecrew.utils.NetworkUtils.SERVER_ADDRESS;
+
 public class RMIManager {
 
     private final TextArea missionLogArea;
@@ -30,7 +32,7 @@ public class RMIManager {
     public void setupRMI(MissionClientCallback callback) {
         try {
             UnicastRemoteObject.exportObject(callback, 0);
-            Registry registry = LocateRegistry.getRegistry("localhost");
+            Registry registry = LocateRegistry.getRegistry(SERVER_ADDRESS);
             MissionService service = (MissionService) registry.lookup("MissionService");
             String playerName = GameApplication.getPlayerInfo() != null
                 ? "Player" + GameApplication.getPlayerInfo().getIndex()
@@ -39,9 +41,9 @@ public class RMIManager {
             if (session != null && session.getEngine() != null) {
                 session.getEngine().setMissionService(service);
             }
-            LOGGER.log(Level.INFO, "[RMI] Registered with MissionService as {0}", playerName);
+            LOGGER.log(Level.INFO, "RMI: Registered with MissionService as {0}", playerName);
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "[RMI] Failed to setup RMI", e);
+            LOGGER.log(Level.SEVERE, "RMI: Failed to setup RMI", e);
         }
     }
 
@@ -49,7 +51,7 @@ public class RMIManager {
         String result = success ? "Success" : "Failure";
         String line = "Mission " + missionId + ": " + result;
         Platform.runLater(() -> {
-            LOGGER.log(Level.INFO, "[RMI] {0}", line);
+            LOGGER.log(Level.INFO, "RMI: {0}", line);
             if (missionLogArea != null) {
                 missionLogArea.appendText(line + "\n");
             }

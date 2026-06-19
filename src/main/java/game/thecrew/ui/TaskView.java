@@ -16,7 +16,7 @@ public class TaskView extends Pane {
         setStyle("-fx-background-color: white; -fx-border-color: black; -fx-border-width: 1;");
 
         Text text = new Text(task.getDescription());
-        text.setFont(Font.font(9));
+        text.setFont(Font.font(15));
         text.setWrappingWidth(60);
         text.setLayoutX(5);
         text.setLayoutY(12);
