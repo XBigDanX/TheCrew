@@ -46,8 +46,8 @@ public class RMIManager {
     }
 
     public void updateLog(int missionId, boolean success) {
-        String result = success ? "USPJEH" : "NEUSPJEH";
-        String line = "Misija " + missionId + ": " + result;
+        String result = success ? "Success" : "Failure";
+        String line = "Mission " + missionId + ": " + result;
         Platform.runLater(() -> {
             LOGGER.log(Level.INFO, "[RMI] {0}", line);
             if (missionLogArea != null) {
